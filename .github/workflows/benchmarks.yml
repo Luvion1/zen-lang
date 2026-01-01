@@ -1,0 +1,102 @@
+name: Performance Benchmarks
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 4 * * 1'  # Weekly on Monday at 4 AM
+
+jobs:
+  benchmark:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Install LLVM
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y llvm-14 llvm-14-dev
+        sudo ln -sf /usr/bin/llc-14 /usr/bin/llc
+    
+    - name: Install hyperfine
+      run: |
+        wget https://github.com/sharkdp/hyperfine/releases/download/v1.18.0/hyperfine_1.18.0_amd64.deb
+        sudo dpkg -i hyperfine_1.18.0_amd64.deb
+    
+    - name: Build release
+      run: cargo build --release
+    
+    - name: Benchmark compilation speed
+      run: |
+        echo "## Compilation Benchmarks" >> benchmark_results.md
+        echo "" >> benchmark_results.md
+        
+        hyperfine --export-markdown compilation_bench.md --warmup 3 --runs 10 \
+          './target/release/zen compile examples/hello.zen' \
+          './target/release/zen compile examples/arithmetic.zen' \
+          './target/release/zen compile examples/functions_advanced.zen' \
+          './target/release/zen compile examples/algorithms.zen' \
+          './target/release/zen compile examples/calculator.zen'
+        
+        cat compilation_bench.md >> benchmark_results.md
+    
+    - name: Benchmark execution speed
+      run: |
+        echo "" >> benchmark_results.md
+        echo "## Execution Benchmarks" >> benchmark_results.md
+        echo "" >> benchmark_results.md
+        
+        # Compile examples first
+        ./target/release/zen compile examples/arithmetic.zen
+        ./target/release/zen compile examples/algorithms.zen
+        ./target/release/zen compile examples/calculator.zen
+        
+        hyperfine --export-markdown execution_bench.md --warmup 3 --runs 10 \
+          './examples/arithmetic' \
+          './examples/algorithms' \
+          './examples/calculator'
+        
+        cat execution_bench.md >> benchmark_results.md
+    
+    - name: Binary size analysis
+      run: |
+        echo "" >> benchmark_results.md
+        echo "## Binary Size Analysis" >> benchmark_results.md
+        echo "" >> benchmark_results.md
+        echo "| Binary | Size |" >> benchmark_results.md
+        echo "|--------|------|" >> benchmark_results.md
+        
+        for binary in examples/*; do
+          if [ -x "$binary" ] && [ -f "$binary" ]; then
+            size=$(ls -lh "$binary" | awk '{print $5}')
+            name=$(basename "$binary")
+            echo "| $name | $size |" >> benchmark_results.md
+          fi
+        done
+    
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v3
+      with:
+        name: benchmark-results
+        path: benchmark_results.md
+    
+    - name: Comment PR with results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const results = fs.readFileSync('benchmark_results.md', 'utf8');
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: `## 📊 Performance Benchmark Results\n\n${results}`
+          });

@@ -1,0 +1,81 @@
+// Game: Simple number guessing game simulation
+fn abs(x: i32) -> i32 {
+    if x < 0 {
+        return -x
+    } else {
+        return x
+    }
+}
+
+fn check_guess(guess: i32, target: i32) -> str {
+    let diff = abs(guess - target)
+    
+    if guess == target {
+        return "Correct!"
+    } else if diff <= 5 {
+        return "Very close!"
+    } else if diff <= 10 {
+        return "Close!"
+    } else if diff <= 20 {
+        return "Getting warmer"
+    } else {
+        return "Cold!"
+    }
+}
+
+fn simulate_game(target: i32) -> void {
+    println("=== Number Guessing Game ===")
+    println("Target number: ")
+    println(target)
+    println("")
+    
+    // Simulate some guesses
+    let guesses = [10, 25, 45, 50, 48, 47]  // Note: Using individual variables since arrays not implemented
+    let guess1 = 10
+    let guess2 = 25
+    let guess3 = 45
+    let guess4 = 50
+    let guess5 = 48
+    let guess6 = 47
+    
+    println("Guess 1: ")
+    println(guess1)
+    let result1 = check_guess(guess1, target)
+    println(result1)
+    println("")
+    
+    println("Guess 2: ")
+    println(guess2)
+    let result2 = check_guess(guess2, target)
+    println(result2)
+    println("")
+    
+    println("Guess 3: ")
+    println(guess3)
+    let result3 = check_guess(guess3, target)
+    println(result3)
+    println("")
+    
+    println("Guess 4: ")
+    println(guess4)
+    let result4 = check_guess(guess4, target)
+    println(result4)
+    println("")
+    
+    println("Guess 5: ")
+    println(guess5)
+    let result5 = check_guess(guess5, target)
+    println(result5)
+    println("")
+    
+    println("Guess 6: ")
+    println(guess6)
+    let result6 = check_guess(guess6, target)
+    println(result6)
+}
+
+fn main() -> i32 {
+    let secret_number = 47
+    simulate_game(secret_number)
+    return 0
+}

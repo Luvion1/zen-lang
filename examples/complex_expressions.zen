@@ -1,0 +1,63 @@
+// Complex nested expressions and function calls
+fn square(x: i32) -> i32 {
+    return x * x
+}
+
+fn cube(x: i32) -> i32 {
+    return x * x * x
+}
+
+fn add_three(a: i32, b: i32, c: i32) -> i32 {
+    return a + b + c
+}
+
+fn max(a: i32, b: i32) -> i32 {
+    if a > b {
+        return a
+    } else {
+        return b
+    }
+}
+
+fn main() -> i32 {
+    // Nested arithmetic expressions
+    let complex1 = (10 + 5) * (8 - 3)
+    let complex2 = 2 * 3 + 4 * 5
+    let complex3 = (15 / 3) + (20 / 4)
+    
+    println("Complex arithmetic:")
+    println(complex1)  // 75
+    println(complex2)  // 26
+    println(complex3)  // 10
+    
+    // Nested function calls
+    let nested1 = square(add_three(1, 2, 3))
+    let nested2 = add_three(square(2), square(3), square(4))
+    let nested3 = max(square(5), cube(3))
+    
+    println("Nested function calls:")
+    println(nested1)   // 36 (square of 6)
+    println(nested2)   // 29 (4 + 9 + 16)
+    println(nested3)   // 27 (max of 25 and 27)
+    
+    // Complex boolean expressions
+    let bool_complex1 = (10 > 5) && (3 < 8)
+    let bool_complex2 = (15 == 15) || (20 != 20)
+    let bool_complex3 = !(5 > 10) && (7 <= 7)
+    
+    println("Complex boolean expressions:")
+    println(bool_complex1)  // true (1)
+    println(bool_complex2)  // true (1)
+    println(bool_complex3)  // true (1)
+    
+    // Function calls in conditions
+    if max(10, 20) > 15 {
+        println("Max is greater than 15")
+    }
+    
+    if square(4) == 16 {
+        println("Square of 4 is 16")
+    }
+    
+    return 0
+}

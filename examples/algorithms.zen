@@ -1,0 +1,96 @@
+// Algorithms and data processing
+fn fibonacci(n: i32) -> i32 {
+    if n <= 1 {
+        return n
+    } else {
+        return fibonacci(n - 1) + fibonacci(n - 2)
+    }
+}
+
+fn gcd(a: i32, b: i32) -> i32 {
+    if b == 0 {
+        return a
+    } else {
+        return gcd(b, a % b)
+    }
+}
+
+fn is_prime(n: i32) -> bool {
+    if n <= 1 {
+        return false
+    }
+    if n <= 3 {
+        return true
+    }
+    if n % 2 == 0 || n % 3 == 0 {
+        return false
+    }
+    
+    let mut i = 5
+    while i * i <= n {
+        if n % i == 0 || n % (i + 2) == 0 {
+            return false
+        }
+        i = i + 6
+    }
+    return true
+}
+
+fn sum_range(start: i32, end: i32) -> i32 {
+    let mut sum = 0
+    let mut i = start
+    while i <= end {
+        sum = sum + i
+        i = i + 1
+    }
+    return sum
+}
+
+fn main() -> i32 {
+    // Fibonacci sequence (using iterative approach to avoid forward reference)
+    println("Fibonacci numbers:")
+    for (let mut i = 0; i < 8; i = i + 1) {
+        let mut a = 0
+        let mut b = 1
+        if i == 0 {
+            println(0)
+        } else if i == 1 {
+            println(1)
+        } else {
+            let mut fib = 0
+            for (let mut j = 2; j <= i; j = j + 1) {
+                fib = a + b
+                a = b
+                b = fib
+            }
+            println(fib)
+        }
+    }
+    
+    // Greatest Common Divisor
+    let gcd_result = gcd(48, 18)
+    println("GCD of 48 and 18:")
+    println(gcd_result)  // 6
+    
+    // Prime number checking
+    println("Prime number checks:")
+    let prime_check1 = is_prime(17)
+    let prime_check2 = is_prime(18)
+    println(prime_check1)  // true (1)
+    println(prime_check2)  // false (0)
+    
+    // Sum of range
+    let range_sum = sum_range(1, 10)
+    println("Sum of 1 to 10:")
+    println(range_sum)  // 55
+    
+    // Factorial using loop
+    let mut factorial = 1
+    for (let mut i = 1; i <= 5; i = i + 1) {
+        factorial = factorial * i
+    }
+    println("Factorial of 5:")
+    println(factorial)  // 120
+    
+    return 0
+}

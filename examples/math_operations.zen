@@ -1,0 +1,57 @@
+// Mathematical operations and expressions
+fn main() -> i32 {
+    // Integer arithmetic
+    let a = 10
+    let b = 3
+    
+    let sum = a + b
+    let diff = a - b
+    let product = a * b
+    let quotient = a / b
+    
+    println("Integer operations:")
+    println(sum)      // 13
+    println(diff)     // 7
+    println(product)  // 30
+    println(quotient) // 3
+    
+    // Float arithmetic
+    let x = 10.5
+    let y = 3.2
+    
+    let float_sum = x + y
+    let float_diff = x - y
+    let float_product = x * y
+    let float_quotient = x / y
+    
+    println("Float operations:")
+    println(float_sum)
+    println(float_diff)
+    println(float_product)
+    println(float_quotient)
+    
+    // Comparison operations
+    let is_equal = a == b
+    let is_not_equal = a != b
+    let is_greater = a > b
+    let is_less = a < b
+    let is_greater_equal = a >= b
+    let is_less_equal = a <= b
+    
+    println("Comparisons:")
+    println(is_equal)        // false (0)
+    println(is_not_equal)    // true (1)
+    println(is_greater)      // true (1)
+    
+    // Boolean operations
+    let bool1 = true
+    let bool2 = false
+    let and_result = bool1 && bool2
+    let or_result = bool1 || bool2
+    
+    println("Boolean operations:")
+    println(and_result)      // false (0)
+    println(or_result)       // true (1)
+    
+    return 0
+}

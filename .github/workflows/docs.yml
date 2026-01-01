@@ -3,114 +3,179 @@ name: Documentation
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  pull_request:
+    branches: [ main ]
 
 jobs:
-  build-docs:
+  docs:
     name: Build Documentation
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Clean previous builds
-        run: cargo clean
-
-      - name: Build Rust Documentation
-        run: |
-          cargo doc --no-deps --document-private-items
-          echo '<meta http-equiv="refresh" content="0; url=zen_core">' > target/doc/index.html
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Build GitHub Pages
-        run: |
-          mkdir -p _site
-          cp -r target/doc/* _site/
-          cp -r docs/* _site/
-          cp README.md _site/
-          
-          # Create index.html for GitHub Pages
-          cat > _site/index.html << 'EOF'
-          <!DOCTYPE html>
-          <html>
-          <head>
-              <title>Zen Programming Language Documentation</title>
-              <meta charset="utf-8">
-              <style>
-                  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 40px; }
-                  .container { max-width: 800px; margin: 0 auto; }
-                  h1 { color: #2c3e50; }
-                  .links { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin: 30px 0; }
-                  .link-card { border: 1px solid #ddd; padding: 20px; border-radius: 8px; text-decoration: none; color: inherit; }
-                  .link-card:hover { background: #f8f9fa; }
-              </style>
-          </head>
-          <body>
-              <div class="container">
-                  <h1>Zen Programming Language Documentation</h1>
-                  <p>Welcome to the Zen programming language documentation.</p>
-                  
-                  <div class="links">
-                      <a href="zen_core/index.html" class="link-card">
-                          <h3>📚 API Documentation</h3>
-                          <p>Rust API documentation for the Zen compiler</p>
-                      </a>
-                      <a href="LANGUAGE_REFERENCE.html" class="link-card">
-                          <h3>📖 Language Reference</h3>
-                          <p>Complete language specification and syntax</p>
-                      </a>
-                      <a href="ARCHITECTURE.html" class="link-card">
-                          <h3>🏗️ Architecture Guide</h3>
-                          <p>Compiler internals and design</p>
-                      </a>
-                      <a href="ROADMAP.html" class="link-card">
-                          <h3>🗺️ Roadmap</h3>
-                          <p>Future plans and milestones</p>
-                      </a>
-                  </div>
-                  
-                  <h2>Quick Start</h2>
-                  <pre><code># Install Zen
-          curl -sSL https://raw.githubusercontent.com/Lunar-Chipter/zen-lang/main/install.sh | bash
-
-          # Create your first program
-          echo 'fn main() -> i32 { println("Hello, Zen!") return 0 }' > hello.zen
-          zen run hello.zen</code></pre>
-              </div>
-          </body>
-          </html>
-          EOF
-
-      - name: Upload Pages Artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: _site
-
-  deploy-docs:
-    name: Deploy Documentation
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build-docs
-    if: github.ref == 'refs/heads/main'
-
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+    
+    - name: Install mdbook
+      run: |
+        cargo install mdbook
+        cargo install mdbook-mermaid
+        cargo install mdbook-linkcheck
+    
+    - name: Generate API documentation
+      run: |
+        cargo doc --no-deps --all-features --document-private-items
+        echo '<meta http-equiv="refresh" content="0; url=zen_core">' > target/doc/index.html
+    
+    - name: Check documentation links
+      run: cargo doc --no-deps --all-features
+    
+    - name: Create documentation site
+      run: |
+        mkdir -p docs-site
+        
+        # Copy API docs
+        cp -r target/doc docs-site/api
+        
+        # Copy examples
+        mkdir -p docs-site/examples
+        cp examples/*.zen docs-site/examples/
+        cp examples/README.md docs-site/examples/
+        
+        # Copy main documentation
+        cp README.md docs-site/
+        cp -r docs/* docs-site/ 2>/dev/null || true
+        
+        # Create main index
+        cat > docs-site/index.html << 'EOF'
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Zen Programming Language</title>
+            <style>
+                body {
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    line-height: 1.6;
+                    margin: 0;
+                    padding: 0;
+                    background: #f8f9fa;
+                }
+                .container {
+                    max-width: 1200px;
+                    margin: 0 auto;
+                    padding: 20px;
+                }
+                .header {
+                    text-align: center;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    padding: 60px 20px;
+                    margin-bottom: 40px;
+                }
+                .nav-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                    gap: 20px;
+                    margin-top: 40px;
+                }
+                .nav-card {
+                    background: white;
+                    padding: 30px;
+                    border-radius: 10px;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                    text-decoration: none;
+                    color: #333;
+                    transition: transform 0.2s;
+                }
+                .nav-card:hover {
+                    transform: translateY(-5px);
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+                }
+                .nav-card h3 {
+                    margin-top: 0;
+                    color: #667eea;
+                }
+                .features {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                    gap: 20px;
+                    margin: 40px 0;
+                }
+                .feature {
+                    background: white;
+                    padding: 20px;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                }
+                .feature h4 {
+                    margin-top: 0;
+                    color: #764ba2;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>🧘 Zen Programming Language</h1>
+                <p>Simplicity without Sacrifice, Safety without Complexity</p>
+                <p><strong>Version 0.0.1</strong> • Modern Systems Programming</p>
+            </div>
+            
+            <div class="container">
+                <div class="nav-grid">
+                    <a href="api/zen_core/index.html" class="nav-card">
+                        <h3>📚 API Documentation</h3>
+                        <p>Complete API reference for all Zen compiler components including lexer, parser, type checker, and code generator.</p>
+                    </a>
+                    
+                    <a href="examples/" class="nav-card">
+                        <h3>💡 Examples</h3>
+                        <p>Comprehensive examples showcasing Zen's features from basic syntax to advanced algorithms and applications.</p>
+                    </a>
+                    
+                    <a href="README.md" class="nav-card">
+                        <h3>🚀 Getting Started</h3>
+                        <p>Installation guide, quick start tutorial, and overview of Zen's key features and capabilities.</p>
+                    </a>
+                </div>
+                
+                <div class="features">
+                    <div class="feature">
+                        <h4>🚀 High Performance</h4>
+                        <p>C/C++ level performance with zero-cost abstractions via LLVM compilation.</p>
+                    </div>
+                    
+                    <div class="feature">
+                        <h4>🛡️ Memory Safe</h4>
+                        <p>Compile-time memory safety guarantees without garbage collection overhead.</p>
+                    </div>
+                    
+                    <div class="feature">
+                        <h4>📝 Simple Syntax</h4>
+                        <p>Clean, readable syntax with automatic type inference and modern language features.</p>
+                    </div>
+                    
+                    <div class="feature">
+                        <h4>🔥 Modern Features</h4>
+                        <p>Pattern matching, ownership system, and explicit mutability controls.</p>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+        EOF
+    
+    - name: Deploy to GitHub Pages
+      if: github.ref == 'refs/heads/main'
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./docs-site
+        cname: zen-lang.dev  # Optional: if you have a custom domain
+    
+    - name: Upload documentation artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: documentation
+        path: docs-site/

@@ -1,0 +1,25 @@
+// Variables and type inference
+fn main() -> i32 {
+    // Type inference from literals
+    let name = "Alice"           // inferred as str
+    let age = 25                 // inferred as i32
+    let height = 5.8             // inferred as f64
+    let is_student = true        // inferred as bool
+    let grade = 'A'              // inferred as char
+    
+    // Explicit types
+    let mut score: i32 = 100
+    let pi: f64 = 3.14159
+    
+    // Mutable variables
+    score = score + 10
+    
+    println("Name: ")
+    println(name)
+    println("Age: ")
+    println(age)
+    println("Score: ")
+    println(score)
+    
+    return 0
+}

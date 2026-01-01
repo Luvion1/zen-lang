@@ -1,0 +1,40 @@
+// String operations and character handling
+fn main() -> i32 {
+    // String variables
+    let greeting = "Hello"
+    let name = "World"
+    let punctuation = "!"
+    
+    // Character variables
+    let first_char = 'Z'
+    let second_char = 'e'
+    let third_char = 'n'
+    
+    println("String examples:")
+    println(greeting)
+    println(name)
+    println(punctuation)
+    
+    println("Character examples:")
+    println(first_char)
+    println(second_char)
+    println(third_char)
+    
+    // String assignment
+    let mut message = "Initial"
+    message = "Updated"
+    println("Updated message:")
+    println(message)
+    
+    // Multiple string variables
+    let lang = "Zen"
+    let version = "0.0.1"
+    let status = "Alpha"
+    
+    println("Language info:")
+    println(lang)
+    println(version)
+    println(status)
+    
+    return 0
+}

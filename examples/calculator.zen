@@ -1,0 +1,107 @@
+// Calculator: Basic arithmetic calculator
+fn add_calc(a: f64, b: f64) -> f64 {
+    return a + b
+}
+
+fn subtract_calc(a: f64, b: f64) -> f64 {
+    return a - b
+}
+
+fn multiply_calc(a: f64, b: f64) -> f64 {
+    return a * b
+}
+
+fn divide_calc(a: f64, b: f64) -> f64 {
+    if b != 0.0 {
+        return a / b
+    } else {
+        println("Error: Division by zero!")
+        return 0.0
+    }
+}
+
+fn power(base: f64, exp: i32) -> f64 {
+    if exp == 0 {
+        return 1.0
+    } else if exp == 1 {
+        return base
+    } else {
+        let mut result = 1.0
+        let mut i = 0
+        while i < exp {
+            result = result * base
+            i = i + 1
+        }
+        return result
+    }
+}
+
+fn calculate(op: char, a: f64, b: f64) -> f64 {
+    if op == '+' {
+        return add_calc(a, b)
+    } else if op == '-' {
+        return subtract_calc(a, b)
+    } else if op == '*' {
+        return multiply_calc(a, b)
+    } else if op == '/' {
+        return divide_calc(a, b)
+    } else {
+        println("Unknown operator")
+        return 0.0
+    }
+}
+
+fn main() -> i32 {
+    println("=== Zen Calculator ===")
+    println("")
+    
+    // Basic operations
+    let num1 = 15.5
+    let num2 = 4.2
+    
+    println("Numbers: 15.5 and 4.2")
+    println("")
+    
+    let sum = calculate('+', num1, num2)
+    println("Addition: ")
+    println(sum)
+    
+    let diff = calculate('-', num1, num2)
+    println("Subtraction: ")
+    println(diff)
+    
+    let product = calculate('*', num1, num2)
+    println("Multiplication: ")
+    println(product)
+    
+    let quotient = calculate('/', num1, num2)
+    println("Division: ")
+    println(quotient)
+    
+    // Power calculations
+    println("")
+    println("Power calculations:")
+    let power2 = power(2.0, 8)
+    let power3 = power(3.0, 4)
+    let power10 = power(10.0, 3)
+    
+    println("2^8 = ")
+    println(power2)
+    println("3^4 = ")
+    println(power3)
+    println("10^3 = ")
+    println(power10)
+    
+    // Complex calculations
+    println("")
+    println("Complex calculations:")
+    let complex1 = add_calc(multiply_calc(3.0, 4.0), divide_calc(10.0, 2.0))
+    let complex2 = subtract_calc(power(5.0, 2), multiply_calc(3.0, 7.0))
+    
+    println("(3 * 4) + (10 / 2) = ")
+    println(complex1)  // 17.0
+    println("5^2 - (3 * 7) = ")
+    println(complex2)  // 4.0
+    
+    return 0
+}

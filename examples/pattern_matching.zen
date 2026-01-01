@@ -1,0 +1,86 @@
+// Pattern matching and conditional logic
+fn classify_number(n: i32) -> void {
+    match n {
+        0 => println("Zero"),
+        1 => println("One"),
+        2 => println("Two"),
+        3 => println("Three"),
+        4 => println("Four"),
+        5 => println("Five"),
+        _ => println("Other number")
+    }
+}
+
+fn grade_letter(score: i32) -> char {
+    if score >= 90 {
+        return 'A'
+    } else if score >= 80 {
+        return 'B'
+    } else if score >= 70 {
+        return 'C'
+    } else if score >= 60 {
+        return 'D'
+    } else {
+        return 'F'
+    }
+}
+
+fn day_type(day: i32) -> str {
+    match day {
+        1 => "Monday",
+        2 => "Tuesday", 
+        3 => "Wednesday",
+        4 => "Thursday",
+        5 => "Friday",
+        6 => "Saturday",
+        7 => "Sunday",
+        _ => "Invalid day"
+    }
+}
+
+fn main() -> i32 {
+    // Pattern matching with numbers
+    println("Number classification:")
+    for (let mut i = 0; i <= 7; i = i + 1) {
+        classify_number(i)
+    }
+    
+    // Conditional grading
+    println("Grade letters:")
+    let scores = [95, 85, 75, 65, 55]  // Note: Arrays not implemented yet
+    let grade1 = grade_letter(95)
+    let grade2 = grade_letter(85)
+    let grade3 = grade_letter(75)
+    let grade4 = grade_letter(65)
+    let grade5 = grade_letter(55)
+    
+    println(grade1)  // A
+    println(grade2)  // B
+    println(grade3)  // C
+    println(grade4)  // D
+    println(grade5)  // F
+    
+    // Day matching
+    println("Days of week:")
+    for (let mut day = 1; day <= 8; day = day + 1) {
+        let day_name = day_type(day)
+        println(day_name)
+    }
+    
+    // Complex conditional logic
+    let age = 25
+    let has_license = true
+    let has_car = false
+    
+    if age >= 18 && has_license {
+        if has_car {
+            println("Can drive own car")
+        } else {
+            println("Can drive but needs a car")
+        }
+    } else {
+        println("Cannot drive")
+    }
+    
+    return 0
+}
