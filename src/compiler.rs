@@ -99,7 +99,7 @@ impl Compiler {
 
         let output_path_abs = std::env::current_dir()?.join(&output_path);
         let output_path_str = output_path_abs.to_string_lossy();
-        println!("Running: {}", output_path.display());
+        println!("Running: {}", output_path_str);
 
         let result = std::process::Command::new(&*output_path_str).output()?;
 
