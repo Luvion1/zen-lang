@@ -54,6 +54,7 @@ detect_arch() {
             ;;
         aarch64|arm64)
             ARCH_SUFFIX="aarch64"
+            echo -e "${GREEN}✓${NC} ARM64 architecture detected"
             ;;
         *)
             echo -e "${RED}✗ Unsupported architecture: $ARCH${NC}"
