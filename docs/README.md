@@ -27,8 +27,8 @@ Zen v0.0.1 is an early prototype with core compiler functionality:
 
 ## Community
 
-- **Issues**: [GitHub Issues](https://github.com/Lunar-Chipter/zen-lang/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/Lunar-Chipter/zen-lang/discussions)
+- **Issues**: [GitHub Issues](https://github.com/Luvion1/zen-lang/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/Luvion1/zen-lang/discussions)
 - **Contributing**: See [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ---

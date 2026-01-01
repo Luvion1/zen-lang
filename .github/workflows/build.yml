@@ -94,32 +94,32 @@ jobs:
 
             ### One-Click Installation
             ```bash
-            curl -sSL https://raw.githubusercontent.com/Lunar-Chipter/zen-lang/main/install.sh | bash
+            curl -sSL https://raw.githubusercontent.com/Luvion1/zen-lang/main/install.sh | bash
             ```
 
             ### Manual Installation
 
             #### Linux (x86_64)
             ```bash
-            curl -L https://github.com/Lunar-Chipter/zen-lang/releases/download/${{ github.ref_name }}/zen-linux-x86_64 -o zen
+            curl -L https://github.com/Luvion1/zen-lang/releases/download/${{ github.ref_name }}/zen-linux-x86_64 -o zen
             chmod +x zen && sudo mv zen /usr/local/bin/
             ```
 
             #### macOS (Intel)
             ```bash
-            curl -L https://github.com/Lunar-Chipter/zen-lang/releases/download/${{ github.ref_name }}/zen-macos-x86_64 -o zen
+            curl -L https://github.com/Luvion1/zen-lang/releases/download/${{ github.ref_name }}/zen-macos-x86_64 -o zen
             chmod +x zen && sudo mv zen /usr/local/bin/
             ```
 
             #### macOS (Apple Silicon)
             ```bash
-            curl -L https://github.com/Lunar-Chipter/zen-lang/releases/download/${{ github.ref_name }}/zen-macos-aarch64 -o zen
+            curl -L https://github.com/Luvion1/zen-lang/releases/download/${{ github.ref_name }}/zen-macos-aarch64 -o zen
             chmod +x zen && sudo mv zen /usr/local/bin/
             ```
 
             #### Windows (x86_64)
             ```powershell
-            Invoke-WebRequest -Uri "https://github.com/Lunar-Chipter/zen-lang/releases/download/${{ github.ref_name }}/zen-windows-x86_64.exe" -OutFile "zen.exe"
+            Invoke-WebRequest -Uri "https://github.com/Luvion1/zen-lang/releases/download/${{ github.ref_name }}/zen-windows-x86_64.exe" -OutFile "zen.exe"
             ```
 
             ### Quick Start

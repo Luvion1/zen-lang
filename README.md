@@ -4,12 +4,12 @@
 
 **Simplicity without Sacrifice, Safety without Complexity**
 
-[![CI](https://github.com/Lunar-Chipter/zen-lang/actions/workflows/ci.yml/badge.svg)](https://github.com/Lunar-Chipter/zen-lang/actions/workflows/ci.yml)
+[![CI](https://github.com/Luvion1/zen-lang/actions/workflows/ci.yml/badge.svg)](https://github.com/Luvion1/zen-lang/actions/workflows/ci.yml)
 [![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/Lunar-Chipter/zen-lang?style=social)](https://github.com/Lunar-Chipter/zen-lang/stargazers)
-[![GitHub issues](https://img.shields.io/github/issues/Lunar-Chipter/zen-lang)](https://github.com/Lunar-Chipter/zen-lang/issues)
-[![GitHub forks](https://img.shields.io/github/forks/Lunar-Chipter/zen-lang?style=social)](https://github.com/Lunar-Chipter/zen-lang/network/members)
+[![GitHub stars](https://img.shields.io/github/stars/Luvion1/zen-lang?style=social)](https://github.com/Luvion1/zen-lang/stargazers)
+[![GitHub issues](https://img.shields.io/github/issues/Luvion1/zen-lang)](https://github.com/Luvion1/zen-lang/issues)
+[![GitHub forks](https://img.shields.io/github/forks/Luvion1/zen-lang?style=social)](https://github.com/Luvion1/zen-lang/network/members)
 
 </div>
 
@@ -48,10 +48,10 @@
 
 ```bash
 # Remote installation (recommended)
-curl -sSL https://raw.githubusercontent.com/Lunar-Chipter/zen-lang/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/Luvion1/zen-lang/main/install.sh | bash
 
 # Or clone and install locally
-git clone https://github.com/Lunar-Chipter/zen-lang.git
+git clone https://github.com/Luvion1/zen-lang.git
 cd zen-lang
 ./install.sh
 ```
@@ -84,13 +84,13 @@ zen run hello.zen
 
 ```bash
 # Install to custom directory
-INSTALL_DIR=/opt/zen curl -sSL https://raw.githubusercontent.com/Lunar-Chipter/zen-lang/main/install.sh | bash
+INSTALL_DIR=/opt/zen curl -sSL https://raw.githubusercontent.com/Luvion1/zen-lang/main/install.sh | bash
 
 # Uninstall Zen
-curl -sSL https://raw.githubusercontent.com/Lunar-Chipter/zen-lang/main/install.sh | bash -s -- --clean
+curl -sSL https://raw.githubusercontent.com/Luvion1/zen-lang/main/install.sh | bash -s -- --clean
 
 # View help
-curl -sSL https://raw.githubusercontent.com/Lunar-Chipter/zen-lang/main/install.sh | bash -s -- --help
+curl -sSL https://raw.githubusercontent.com/Luvion1/zen-lang/main/install.sh | bash -s -- --help
 ```
 
 ### Manual Installation
@@ -100,7 +100,7 @@ If you prefer manual installation:
 #### From Source
 
 ```bash
-git clone https://github.com/Lunar-Chipter/zen-lang.git
+git clone https://github.com/Luvion1/zen-lang.git
 cd zen-lang
 cargo build --release
 sudo cp target/release/zen /usr/local/bin/
@@ -110,40 +110,40 @@ sudo cp target/release/zen /usr/local/bin/
 
 ```bash
 # Download latest release from
-# https://github.com/Lunar-Chipter/zen-lang/releases
+# https://github.com/Luvion1/zen-lang/releases
 
 # Linux (x86_64)
-curl -L https://github.com/Lunar-Chipter/zen-lang/releases/download/v0.0.1/zen-linux-x86_64 -o zen
+curl -L https://github.com/Luvion1/zen-lang/releases/download/v0.0.1/zen-linux-x86_64 -o zen
 chmod +x zen
 sudo mv zen /usr/local/bin/
 
 # macOS (Intel x86_64)
-curl -L https://github.com/Lunar-Chipter/zen-lang/releases/download/v0.0.1/zen-macos-x86_64 -o zen
+curl -L https://github.com/Luvion1/zen-lang/releases/download/v0.0.1/zen-macos-x86_64 -o zen
 chmod +x zen
 sudo mv zen /usr/local/bin/
 
 # Windows
-Invoke-WebRequest -Uri "https://github.com/Lunar-Chipter/zen-lang/releases/download/v0.0.1/zen-windows-x86_64.exe" -OutFile "zen.exe"
+Invoke-WebRequest -Uri "https://github.com/Luvion1/zen-lang/releases/download/v0.0.1/zen-windows-x86_64.exe" -OutFile "zen.exe"
 ```
 
 #### From Release
 
 ```bash
 # Download the latest release from
-# https://github.com/Lunar-Chipter/zen-lang/releases
+# https://github.com/Luvion1/zen-lang/releases
 
 # Linux (x86_64)
-curl -L https://github.com/Lunar-Chipter/zen-lang/releases/download/v0.0.1/zen-linux-x86_64 -o zen
+curl -L https://github.com/Luvion1/zen-lang/releases/download/v0.0.1/zen-linux-x86_64 -o zen
 chmod +x zen
 sudo mv zen /usr/local/bin/
 
 # macOS (Intel x86_64)
-curl -L https://github.com/Lunar-Chipter/zen-lang/releases/download/v0.0.1/zen-macos-x86_64 -o zen
+curl -L https://github.com/Luvion1/zen-lang/releases/download/v0.0.1/zen-macos-x86_64 -o zen
 chmod +x zen
 sudo mv zen /usr/local/bin/
 
 # Windows
-Invoke-WebRequest -Uri "https://github.com/Lunar-Chipter/zen-lang/releases/download/v0.0.1/zen-windows-x86_64.exe" -OutFile "zen.exe"
+Invoke-WebRequest -Uri "https://github.com/Luvion1/zen-lang/releases/download/v0.0.1/zen-windows-x86_64.exe" -OutFile "zen.exe"
 ```
 
 ### Your First Program
@@ -416,7 +416,7 @@ See [ROADMAP.md](docs/ROADMAP.md) for detailed roadmap.
 
 ```bash
 # Clone repository
-git clone https://github.com/Lunar-Chipter/zen-lang.git
+git clone https://github.com/Luvion1/zen-lang.git
 cd zen-lang
 
 # Build in release mode (optimized)
@@ -545,10 +545,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Community
 
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/Lunar-Chipter/zen-lang/discussions)
-- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/Lunar-Chipter/zen-lang/issues)
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/Luvion1/zen-lang/discussions)
+- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/Luvion1/zen-lang/issues)
 - 📖 **Documentation**: [docs/](docs/)
-- ⭐ **Star us**: [GitHub](https://github.com/Lunar-Chipter/zen-lang)
+- ⭐ **Star us**: [GitHub](https://github.com/Luvion1/zen-lang)
 
 ---
 

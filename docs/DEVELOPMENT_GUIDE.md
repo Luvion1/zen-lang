@@ -38,7 +38,7 @@ brew install llvm lld
 ### Clone Repository
 
 ```bash
-git clone https://github.com/Lunar-Chipter/zen-lang.git
+git clone https://github.com/Luvion1/zen-lang.git
 cd zen-lang
 ```
 

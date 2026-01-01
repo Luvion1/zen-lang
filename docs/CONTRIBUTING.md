@@ -34,7 +34,7 @@ git clone https://github.com/YOUR_USERNAME/zen-lang.git
 cd zen-lang
 
 # Add upstream remote
-git remote add upstream https://github.com/Lunar-Chipter/zen-lang.git
+git remote add upstream https://github.com/Luvion1/zen-lang.git
 
 # Install development tools
 rustup component add rustfmt clippy rust-analyzer
@@ -360,9 +360,9 @@ Include:
 
 ## Getting Help
 
-- GitHub Discussions: https://github.com/Lunar-Chipter/zen-lang/discussions
-- GitHub Issues: https://github.com/Lunar-Chipter/zen-lang/issues
-- Documentation: https://github.com/Lunar-Chipter/zen-lang/tree/main/docs
+- GitHub Discussions: https://github.com/Luvion1/zen-lang/discussions
+- GitHub Issues: https://github.com/Luvion1/zen-lang/issues
+- Documentation: https://github.com/Luvion1/zen-lang/tree/main/docs
 
 ## Recognition
 

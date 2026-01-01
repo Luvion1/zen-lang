@@ -416,7 +416,7 @@ v1.0.0 (Feature Complete)
 Want to help reach these milestones? Check out:
 
 - [Contributing Guide](CONTRIBUTING.md)
-- [Good First Issues](https://github.com/Lunar-Chipter/zen-lang/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22)
+- [Good First Issues](https://github.com/Luvion1/zen-lang/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22)
 - [Architecture Guide](ARCHITECTURE.md)
 
 Join us in building the future of systems programming! 🚀
