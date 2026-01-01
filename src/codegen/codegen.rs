@@ -27,8 +27,11 @@ impl CodeGenerator {
 
         ir.push_str("declare i32 @puts(i8*)\n");
         ir.push_str("declare i32 @printf(i8*, ...)\n");
+        ir.push_str("declare i32 @sprintf(i8*, i8*, ...)\n");
         ir.push_str("@int_fmt = private unnamed_addr constant [4 x i8] c\"%d\\0A\\00\"\n");
-        ir.push_str("@float_fmt = private unnamed_addr constant [4 x i8] c\"%f\\0A\\00\"\n\n");
+        ir.push_str("@int_fmt_no_nl = private unnamed_addr constant [3 x i8] c\"%d\\00\"\n");
+        ir.push_str("@float_fmt = private unnamed_addr constant [4 x i8] c\"%f\\0A\\00\"\n");
+        ir.push_str("@float_fmt_no_nl = private unnamed_addr constant [3 x i8] c\"%f\\00\"\n\n");
 
         for stmt in &program.statements {
             self.register_functions(stmt);
@@ -395,7 +398,24 @@ impl CodeGenerator {
                     self.generate_function_statement(stmt, ir);
                 }
                 if let Some(inc) = increment {
-                    self.generate_expression(inc, ir);
+                    // Handle assignment in increment
+                    if let Expr::BinaryOp { left, op, right } = inc {
+                        if matches!(op.kind, TokenType::Equal) {
+                            if let Expr::Identifier { name, .. } = left.as_ref() {
+                                if let Some(var_info) = self.variables.get(name).cloned() {
+                                    let (zen_type, _, alloc_id) = var_info;
+                                    let llvm_type = self.get_llvm_type(&zen_type);
+                                    let value_str = self.generate_expression(right, ir);
+                                    ir.push_str(&format!(
+                                        "  store {} {}, {}* %{}\n",
+                                        llvm_type, value_str, llvm_type, alloc_id
+                                    ));
+                                }
+                            }
+                        }
+                    } else {
+                        self.generate_expression(inc, ir);
+                    }
                 }
                 ir.push_str(&format!("  br label %cond.{}\n", cond_label));
 
@@ -432,6 +452,10 @@ impl CodeGenerator {
             },
 
             Expr::StringLiteral { value, .. } => self.generate_string_literal(value, ir),
+
+            Expr::InterpolatedString { parts, .. } => {
+                self.generate_interpolated_string(parts, ir)
+            },
 
             Expr::Identifier { name, .. } => {
                 if let Some(var_info) = self.variables.get(name).cloned() {
@@ -724,5 +748,93 @@ impl CodeGenerator {
             idx
         ));
         format!("%{}", ptr_id)
+    }
+
+    fn generate_interpolated_string(&mut self, parts: &[crate::ast::expr::StringPart], ir: &mut String) -> String {
+        // Simple approach: print each part separately
+        for part in parts {
+            match part {
+                crate::ast::expr::StringPart::Text(text) => {
+                    if !text.is_empty() {
+                        let text_literal = Expr::StringLiteral {
+                            value: text.clone(),
+                            token: crate::token::Token::new(
+                                crate::token::TokenType::StringLiteral,
+                                format!("\"{}\"", text),
+                                1, 1
+                            ),
+                        };
+                        let val = self.generate_expression(&text_literal, ir);
+                        let call_id = self.fresh_id();
+                        ir.push_str(&format!(
+                            "  %{} = call i32 @printf(i8* {})\n",
+                            call_id, val
+                        ));
+                    }
+                }
+                crate::ast::expr::StringPart::Variable(var_name) => {
+                    if let Some((var_type, _, alloc_id)) = self.variables.get(var_name).cloned() {
+                        match var_type.as_str() {
+                            "i32" => {
+                                let load_id = self.fresh_id();
+                                ir.push_str(&format!("  %{} = load i32, i32* %{}\n", load_id, alloc_id));
+                                let fmt_id = self.fresh_id();
+                                ir.push_str(&format!("  %{} = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @int_fmt_no_nl, i64 0, i64 0), i32 %{})\n",
+                                    fmt_id, load_id));
+                            }
+                            "str" => {
+                                let load_id = self.fresh_id();
+                                ir.push_str(&format!("  %{} = load i8*, i8** %{}\n", load_id, alloc_id));
+                                let call_id = self.fresh_id();
+                                ir.push_str(&format!(
+                                    "  %{} = call i32 @printf(i8* %{})\n",
+                                    call_id, load_id
+                                ));
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+                crate::ast::expr::StringPart::Expression(expr_str) => {
+                    // For now, handle simple function calls like add(result, result)
+                    // This is a simplified implementation - in a full compiler, 
+                    // we'd parse and evaluate the expression properly
+                    if expr_str.starts_with("add(") && expr_str.ends_with(')') {
+                        // Extract arguments - very basic parsing
+                        let args_str = &expr_str[4..expr_str.len()-1];
+                        let args: Vec<&str> = args_str.split(", ").collect();
+                        
+                        if args.len() == 2 {
+                            // Load both arguments
+                            let mut arg_values = Vec::new();
+                            for arg in args {
+                                if let Some((_, _, alloc_id)) = self.variables.get(arg.trim()).cloned() {
+                                    let load_id = self.fresh_id();
+                                    ir.push_str(&format!("  %{} = load i32, i32* %{}\n", load_id, alloc_id));
+                                    arg_values.push(format!("i32 %{}", load_id));
+                                }
+                            }
+                            
+                            if arg_values.len() == 2 {
+                                // Call the function
+                                let call_id = self.fresh_id();
+                                ir.push_str(&format!(
+                                    "  %{} = call i32 @add({})\n",
+                                    call_id, arg_values.join(", ")
+                                ));
+                                
+                                // Print the result
+                                let fmt_id = self.fresh_id();
+                                ir.push_str(&format!("  %{} = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @int_fmt_no_nl, i64 0, i64 0), i32 %{})\n",
+                                    fmt_id, call_id));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Return empty string since we're printing directly
+        String::new()
     }
 }

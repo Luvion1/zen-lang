@@ -570,6 +570,16 @@ impl Parser {
                 return None; // Invalid string literal
             }
             let value = token.lexeme[1..token.lexeme.len() - 1].to_string();
+            
+            // Check if string contains interpolation
+            if value.contains('{') && value.contains('}') {
+                let parts = self.parse_interpolated_string(&value);
+                return Some(Expr::InterpolatedString { 
+                    parts, 
+                    token 
+                });
+            }
+            
             return Some(Expr::StringLiteral { value, token });
         }
         None
@@ -585,6 +595,50 @@ impl Parser {
             return Some(Expr::CharLiteral { value, token });
         }
         None
+    }
+
+    fn parse_interpolated_string(&self, value: &str) -> Vec<crate::ast::expr::StringPart> {
+        let mut parts = Vec::new();
+        let mut current = String::new();
+        let mut chars = value.chars().peekable();
+        
+        while let Some(ch) = chars.next() {
+            if ch == '{' {
+                // Save any text before the variable
+                if !current.is_empty() {
+                    parts.push(crate::ast::expr::StringPart::Text(current.clone()));
+                    current.clear();
+                }
+                
+                // Extract variable name or expression
+                let mut expr_content = String::new();
+                while let Some(&next_ch) = chars.peek() {
+                    if next_ch == '}' {
+                        chars.next(); // consume '}'
+                        break;
+                    }
+                    expr_content.push(chars.next().unwrap());
+                }
+                
+                if !expr_content.is_empty() {
+                    // Check if it's a function call (contains parentheses)
+                    if expr_content.contains('(') && expr_content.contains(')') {
+                        parts.push(crate::ast::expr::StringPart::Expression(expr_content));
+                    } else {
+                        parts.push(crate::ast::expr::StringPart::Variable(expr_content));
+                    }
+                }
+            } else {
+                current.push(ch);
+            }
+        }
+        
+        // Add remaining text
+        if !current.is_empty() {
+            parts.push(crate::ast::expr::StringPart::Text(current));
+        }
+        
+        parts
     }
 
     fn consume_identifier(&mut self) -> Result<String, String> {

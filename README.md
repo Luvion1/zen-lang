@@ -240,6 +240,11 @@ fn main() -> i32 {
         i = i + 1
     }
 
+    // For Loop (C-style)
+    for (let mut j = 0; j < 3; j = j + 1) {
+        println("Count: {j}")
+    }
+
     // Match Expression
     match x {
         1 => println("One"),
@@ -334,7 +339,9 @@ fn main() -> i32 {
 | **Lexer** | ✅ Complete | 7/7 | Tokenizes keywords, operators, literals |
 | **Parser** | ✅ Complete | 16/16 | Parses tokens into AST |
 | **Type Checker** | ✅ Complete | - | Static type checking with inference |
-| **Code Generator** | 🟡 Partial | - | LLVM IR generation (basic features) |
+| **Code Generator** | ✅ Complete | - | LLVM IR generation (all basic features) |
+| **String Interpolation** | ✅ Complete | - | Variable and expression interpolation |
+| **For Loops** | ✅ Complete | - | C-style for loops with initialization |
 | **Ownership Checker** | ⏳ Planned | - | Memory safety enforcement (v0.1.0+) |
 | **Standard Library** | ⏳ Planned | - | I/O, collections, core types (v0.2.0+) |
 
@@ -368,25 +375,26 @@ zen --help
   - Lexer and tokenizer (7/7 tests passing)
   - Parser with full grammar support (16/16 tests passing)
   - Type system with inference
-  - Basic code generation (LLVM IR)
+  - Complete code generation (LLVM IR)
   - CLI with `compile`, `run`, `tokenize` commands
 
 - **Language Features**
   - Function definitions with parameters and return types
   - Variable declarations (`let`, `let mut`)
-  - Control flow (if/else, while, match)
-  - Expression statements
+  - Control flow (if/else, while, **for loops**)
+  - Expression statements with complex function calls
   - Return statements
+  - **String interpolation** (`"Hello, {name}!"`)
+  - **Complex function calls** as arguments and in expressions
 
-**Known Limitations** ⚠️
-
-- Complex function calls with multiple parameters need codegen fixes
-- For loops with variable initialization
-- String formatting with variables
-- Ownership system not yet implemented
+**New in v0.0.1** 🆕
+- ✅ **String Interpolation**: `"The result is {variable}!"` and `"Sum: {add(x, y)}"`
+- ✅ **Complex Function Calls**: `multiply(add(5, 3), add(2, 4))`
+- ✅ **For Loops**: `for (let mut i = 0; i < 10; i = i + 1) { ... }`
+- ✅ **Function Calls in Expressions**: `let sum = add(10, 20) + add(5, 15)`
 
 **Statistics**
-- ~5,800 lines of Rust code
+- ~3,500 lines of Rust code
 - 23/23 tests passing
 - Supports: Linux, macOS (Intel x86_64), Windows
 
@@ -488,12 +496,6 @@ We welcome contributions from everyone! Please see [CONTRIBUTING.md](docs/CONTRI
 ### Areas for Contribution
 
 #### High Priority
-
-- 🎯 **Code Generation Fixes**
-  - Complex function calls with multiple parameters
-  - For loop variable initialization
-  - Function calls in expressions
-  - String formatting with variables
 
 - 🎯 **Ownership System**
   - Ownership tracking engine

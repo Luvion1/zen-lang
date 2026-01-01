@@ -290,6 +290,7 @@ impl TypeChecker {
             Expr::IntegerLiteral { .. } => Ok("i32".to_string()),
             Expr::FloatLiteral { .. } => Ok("f64".to_string()),
             Expr::StringLiteral { .. } => Ok("str".to_string()),
+            Expr::InterpolatedString { .. } => Ok("str".to_string()),
             Expr::CharLiteral { .. } => Ok("char".to_string()),
             Expr::BooleanLiteral { .. } => Ok("bool".to_string()),
 

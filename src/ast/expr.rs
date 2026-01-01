@@ -1,6 +1,13 @@
 use crate::token::*;
 
 #[derive(Debug, Clone)]
+pub enum StringPart {
+    Text(String),
+    Variable(String),
+    Expression(String), // For function calls like add(result, result)
+}
+
+#[derive(Debug, Clone)]
 pub enum Expr {
     IntegerLiteral {
         value: String,
@@ -12,6 +19,10 @@ pub enum Expr {
     },
     StringLiteral {
         value: String,
+        token: Token,
+    },
+    InterpolatedString {
+        parts: Vec<StringPart>,
         token: Token,
     },
     CharLiteral {

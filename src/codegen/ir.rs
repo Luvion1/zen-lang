@@ -114,6 +114,21 @@ impl StringGenerator {
             Expr::StringLiteral { value, .. } => {
                 self.add_string(value);
             }
+            Expr::InterpolatedString { parts, .. } => {
+                for part in parts {
+                    match part {
+                        crate::ast::expr::StringPart::Text(text) => {
+                            self.add_string(text);
+                        }
+                        crate::ast::expr::StringPart::Variable(_) => {
+                            // Variables don't need string collection
+                        }
+                        crate::ast::expr::StringPart::Expression(_) => {
+                            // Expressions don't need string collection for now
+                        }
+                    }
+                }
+            }
             Expr::BinaryOp { left, right, .. } => {
                 self.collect_strings_from_expr(left);
                 self.collect_strings_from_expr(right);
