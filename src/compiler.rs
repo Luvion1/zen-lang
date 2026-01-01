@@ -97,10 +97,11 @@ impl Compiler {
 
         Compiler::compile(input, None)?;
 
-        let output_path_str = format!("./{}", output_path.display());
-        println!("Running: {}", output_path_str);
+        let output_path_abs = std::env::current_dir()?.join(&output_path);
+        let output_path_str = output_path_abs.to_string_lossy();
+        println!("Running: {}", output_path.display());
 
-        let result = std::process::Command::new(&output_path_str).output()?;
+        let result = std::process::Command::new(&*output_path_str).output()?;
 
         if !result.status.success() {
             anyhow::bail!("error: failed to execute: {}", result.status);
