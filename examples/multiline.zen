@@ -1,0 +1,6 @@
+fn main() -> i32 {
+    println("Hello, Zen!")
+    println("This is a test")
+    println("Multiple statements work correctly")
+    return 0
+}

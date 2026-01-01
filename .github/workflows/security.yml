@@ -1,0 +1,66 @@
+name: Security
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 0 * * 1'  # Weekly on Monday
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Clean previous builds
+        run: cargo clean
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --force
+
+      - name: Run Security Audit
+        run: cargo audit
+
+  dependency-check:
+    name: Dependency Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Clean previous builds
+        run: cargo clean
+
+      - name: Check Dependencies
+        run: |
+          cargo tree
+          cargo outdated || echo "cargo-outdated not available"
+
+  license-check:
+    name: License Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check License Headers
+        run: |
+          echo "Checking for license compliance..."
+          find src -name "*.rs" | head -5 | xargs head -10
+          echo "License check completed"

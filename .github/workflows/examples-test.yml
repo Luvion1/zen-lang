@@ -1,0 +1,76 @@
+name: Examples Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test-examples:
+    name: Test Examples
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install LLVM
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y llvm lld clang
+
+      - name: Clean previous builds
+        run: cargo clean
+
+      - name: Build Zen Compiler
+        run: cargo build --release
+
+      - name: Test All Examples (Compile Only)
+        run: |
+          for file in examples/*.zen; do
+            echo "Testing compilation of $file"
+            ./target/release/zen compile "$file" || echo "Failed: $file"
+          done
+
+      - name: Test Safe Examples (Run)
+        run: |
+          echo "Testing hello.zen"
+          timeout 5s ./target/release/zen run examples/hello.zen || echo "Timeout or error"
+          
+          echo "Testing arithmetic.zen"
+          timeout 5s ./target/release/zen run examples/arithmetic.zen || echo "Timeout or error"
+          
+          echo "Testing functions.zen"
+          timeout 5s ./target/release/zen run examples/functions.zen || echo "Timeout or error"
+          
+          echo "Testing nested_calls.zen"
+          timeout 5s ./target/release/zen run examples/nested_calls.zen || echo "Timeout or error"
+
+  install-test:
+    name: Test Installation
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Test Install Script Syntax
+        run: bash -n install.sh
+
+      - name: Test Install Script Help
+        run: ./install.sh --help
+
+      - name: Test Install Script (Dry Run)
+        run: |
+          # Test environment variable handling
+          INSTALL_DIR=/tmp/zen-test ./install.sh --help

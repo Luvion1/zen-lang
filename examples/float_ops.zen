@@ -1,0 +1,20 @@
+fn main() -> i32 {
+    let x: f64 = 10.5
+    let y: f64 = 5.3
+    let sum: f64 = x + y
+    let product: f64 = x * y
+    let diff: f64 = x - y
+
+    println("x:")
+    println(x)
+    println("y:")
+    println(y)
+    println("sum:")
+    println(sum)
+    println("product:")
+    println(product)
+    println("diff:")
+    println(diff)
+
+    return 0
+}

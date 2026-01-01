@@ -1,0 +1,18 @@
+[package]
+name = "zen-lang"
+version = "0.0.1"
+edition = "2021"
+authors = ["Zen Team"]
+
+[dependencies]
+anyhow = "1.0"
+thiserror = "2.0"
+clap = { version = "4.5", features = ["derive"] }
+
+[[bin]]
+name = "zen"
+path = "src/main.rs"
+
+[lib]
+name = "zen_core"
+path = "src/lib.rs"

@@ -1,0 +1,15 @@
+// Control flow with if/else and while
+fn main() -> i32 {
+    let mut count: i32 = 0
+    
+    while count < 5 {
+        if count == 2 {
+            println("Found two!")
+        } else {
+            println(count)
+        }
+        count = count + 1
+    }
+    
+    return 0
+}

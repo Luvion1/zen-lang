@@ -1,0 +1,13 @@
+// Nested function calls
+fn square(x: i32) -> i32 {
+    return x * x
+}
+
+fn add_squares(a: i32, b: i32) -> i32 {
+    return square(a) + square(b)
+}
+
+fn main() -> i32 {
+    println(add_squares(3, 4))  // Should print 25 (9 + 16)
+    return 0
+}

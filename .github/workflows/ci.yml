@@ -1,0 +1,124 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  test:
+    name: Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        rust: [stable]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ matrix.rust }}
+          components: rustfmt, clippy
+
+      - name: Clean previous builds
+        run: cargo clean
+
+      - name: Run Tests
+        run: cargo test --verbose
+
+      - name: Test Examples
+        run: |
+          cargo build --release
+          ./target/release/zen compile examples/hello.zen
+          ./target/release/zen compile examples/arithmetic.zen
+          ./target/release/zen compile examples/functions.zen
+          ./target/release/zen compile examples/nested_calls.zen
+
+  fmt:
+    name: Format Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: Check Formatting
+        run: cargo fmt --all -- --check
+
+  clippy:
+    name: Clippy Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Clean previous builds
+        run: cargo clean
+
+      - name: Run Clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+  build:
+    name: Build Release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Clean previous builds
+        run: cargo clean
+
+      - name: Build Release
+        run: cargo build --release
+
+      - name: Test Binary
+        run: |
+          ./target/release/zen --help
+        if: runner.os != 'Windows'
+
+      - name: Test Binary (Windows)
+        run: |
+          ./target/release/zen.exe --help
+        if: runner.os == 'Windows'
+
+  install-script:
+    name: Test Install Script
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Test Install Script Help
+        run: ./install.sh --help
+
+      - name: Test Install Script Syntax
+        run: bash -n install.sh

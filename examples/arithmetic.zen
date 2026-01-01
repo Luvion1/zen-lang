@@ -1,0 +1,8 @@
+// Basic arithmetic and variables
+fn main() -> i32 {
+    let x: i32 = 10
+    let y: i32 = 20
+    let result: i32 = x + y * 2
+    println(result)
+    return 0
+}

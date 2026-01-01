@@ -1,0 +1,15 @@
+// Function definitions and calls
+fn add(a: i32, b: i32) -> i32 {
+    return a + b
+}
+
+fn multiply(x: i32, y: i32) -> i32 {
+    return x * y
+}
+
+fn main() -> i32 {
+    let sum: i32 = add(5, 3)
+    let product: i32 = multiply(sum, 4)
+    println(product)
+    return 0
+}

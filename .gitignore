@@ -1,0 +1,40 @@
+/target
+*.o
+*.ll
+*.exe
+*.out
+.DS_Store
+
+# Test files and debug artifacts
+test_*
+debug*
+*_test
+*_debug
+
+# Example executables
+examples/hello
+examples/multiline
+examples/test_full
+examples/test
+examples/test_vars
+examples/simple_int
+examples/simple_int_new
+examples/float_ops
+examples/match_*
+examples/arithmetic
+examples/functions
+examples/control_flow
+examples/nested_calls
+
+# Backup files
+**/*.backup*
+**/*_backup*
+**/*_broken*
+**/*_stub*
+
+# IDE files
+.vscode/
+.idea/
+
+# Zen binary (use cargo run instead)
+zen
