@@ -35,12 +35,19 @@ impl StringGenerator {
             Stmt::If {
                 condition,
                 then_branch,
+                else_if_branches,
                 else_branch,
                 ..
             } => {
                 self.collect_strings_from_expr(condition);
                 for s in then_branch {
                     self.collect_strings(s);
+                }
+                for else_if_branch in else_if_branches {
+                    self.collect_strings_from_expr(&else_if_branch.condition);
+                    for s in &else_if_branch.body {
+                        self.collect_strings(s);
+                    }
                 }
                 if let Some(else_stmts) = else_branch {
                     for s in else_stmts {

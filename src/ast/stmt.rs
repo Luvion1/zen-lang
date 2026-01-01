@@ -2,6 +2,13 @@ use crate::ast::expr::*;
 use crate::token::*;
 
 #[derive(Debug, Clone)]
+pub struct ElseIfBranch {
+    pub condition: Expr,
+    pub body: Vec<Stmt>,
+    pub token: Token,
+}
+
+#[derive(Debug, Clone)]
 pub enum Stmt {
     VariableDecl {
         name: String,
@@ -29,6 +36,7 @@ pub enum Stmt {
     If {
         condition: Expr,
         then_branch: Vec<Stmt>,
+        else_if_branches: Vec<ElseIfBranch>,
         else_branch: Option<Vec<Stmt>>,
         token: Token,
     },

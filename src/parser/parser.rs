@@ -6,23 +6,86 @@ use crate::token::{Token, TokenType};
 pub struct Parser {
     tokens: Vec<Token>,
     current: usize,
+    // Enhanced error tracking
+    errors: Vec<String>,
+    panic_mode: bool,
+    had_error: bool,
 }
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
-        Parser { tokens, current: 0 }
+        Parser { 
+            tokens, 
+            current: 0,
+            errors: Vec::new(),
+            panic_mode: false,
+            had_error: false,
+        }
     }
 
     pub fn parse(&mut self) -> Result<Program, String> {
         let mut program = Program::new();
 
         while !self.is_at_end() {
-            if let Some(stmt) = self.declaration()? {
-                program.add_statement(stmt);
+            if self.panic_mode {
+                self.synchronize();
+            }
+
+            match self.declaration() {
+                Ok(Some(stmt)) => program.add_statement(stmt),
+                Ok(None) => continue,
+                Err(e) => {
+                    self.report_error(e);
+                    self.synchronize();
+                }
             }
         }
 
-        Ok(program)
+        if self.had_error {
+            let error_summary = format!("Parsing failed with {} errors:\n{}", 
+                                      self.errors.len(), 
+                                      self.errors.join("\n"));
+            Err(error_summary)
+        } else {
+            Ok(program)
+        }
+    }
+
+    fn report_error(&mut self, message: String) {
+        if self.panic_mode {
+            return;
+        }
+        
+        self.panic_mode = true;
+        self.had_error = true;
+        
+        let current_token = self.peek();
+        let error_msg = format!("Error at line {}, column {}: {} (token: {:?})", 
+                               current_token.line, 
+                               current_token.column, 
+                               message,
+                               current_token.kind);
+        
+        self.errors.push(error_msg);
+        eprintln!("Parse error: {}", message);
+    }
+
+    fn synchronize(&mut self) {
+        self.panic_mode = false;
+        
+        while !self.is_at_end() {
+            if self.previous().kind == TokenType::Semicolon {
+                return;
+            }
+
+            match self.peek().kind {
+                TokenType::Fn | TokenType::Let | TokenType::If | 
+                TokenType::While | TokenType::For | TokenType::Return => return,
+                _ => {}
+            }
+
+            self.advance();
+        }
     }
 
     fn declaration(&mut self) -> Result<Option<Stmt>, String> {
@@ -172,20 +235,41 @@ impl Parser {
     }
 
     fn if_statement(&mut self) -> Result<Stmt, String> {
+        let if_token = self.peek().clone();
         self.consume(TokenType::If, "Expected 'if' keyword")?;
         let condition = self.expression()?;
         let then_branch = self.block()?;
-        let mut else_branch = None;
-
-        if self.match_token(TokenType::Else) {
-            else_branch = Some(self.block()?);
+        
+        // Parse all else if branches
+        let mut else_if_branches = Vec::new();
+        
+        while self.check(TokenType::Else) && self.check_ahead(1, TokenType::If) {
+            self.advance(); // consume 'else'
+            let else_if_token = self.peek().clone();
+            self.consume(TokenType::If, "Expected 'if' after 'else'")?;
+            let else_if_condition = self.expression()?;
+            let else_if_body = self.block()?;
+            
+            else_if_branches.push(crate::ast::stmt::ElseIfBranch {
+                condition: else_if_condition,
+                body: else_if_body,
+                token: else_if_token,
+            });
         }
+        
+        // Parse final else branch if present
+        let else_branch = if self.match_token(TokenType::Else) {
+            Some(self.block()?)
+        } else {
+            None
+        };
 
         Ok(Stmt::If {
             condition,
             then_branch,
+            else_if_branches,
             else_branch,
-            token: self.previous().clone(),
+            token: if_token,
         })
     }
 
@@ -649,11 +733,48 @@ impl Parser {
     }
 
     fn consume(&mut self, token_type: TokenType, message: &str) -> Result<(), String> {
-        if self.check(token_type) {
+        if self.check(token_type.clone()) {
             self.advance();
             return Ok(());
         }
-        Err(format!("{} at line {}", message, self.peek().line))
+        
+        let current = self.peek();
+        let detailed_error = format!(
+            "{} at line {}, column {}. Expected {:?}, but found {:?} '{}'",
+            message, 
+            current.line, 
+            current.column,
+            token_type,
+            current.kind,
+            current.lexeme
+        );
+        
+        // Enhanced error context
+        let context = self.get_error_context();
+        let full_error = if !context.is_empty() {
+            format!("{}\nContext: {}", detailed_error, context)
+        } else {
+            detailed_error
+        };
+        
+        Err(full_error)
+    }
+
+    fn get_error_context(&self) -> String {
+        // Provide context around the error location
+        let mut context = String::new();
+        let start = if self.current >= 2 { self.current - 2 } else { 0 };
+        let end = std::cmp::min(self.current + 3, self.tokens.len());
+        
+        for i in start..end {
+            if i < self.tokens.len() {
+                let marker = if i == self.current { " >>> " } else { "     " };
+                context.push_str(&format!("{}Token {}: {:?} '{}'\n", 
+                                        marker, i, self.tokens[i].kind, self.tokens[i].lexeme));
+            }
+        }
+        
+        context
     }
 
     fn match_token(&mut self, token_type: TokenType) -> bool {
@@ -669,6 +790,14 @@ impl Parser {
             return false;
         }
         self.peek().kind == token_type
+    }
+
+    fn check_ahead(&self, offset: usize, token_type: TokenType) -> bool {
+        let index = self.current + offset;
+        if index >= self.tokens.len() {
+            return false;
+        }
+        self.tokens[index].kind == token_type
     }
 
     fn is_at_end(&self) -> bool {
@@ -882,5 +1011,148 @@ fn main() -> i32 {
 
         let program = result.expect("Failed to parse multiple declarations");
         assert_eq!(program.statements.len(), 2);
+    }
+
+    #[test]
+    fn test_else_if_single() {
+        let code = r#"
+fn main() -> i32 {
+    let x = 10
+    if x > 15 {
+        println("High")
+    } else if x > 5 {
+        println("Medium")
+    } else {
+        println("Low")
+    }
+    return 0
+}
+"#;
+        let mut lexer = crate::lexer::lexer::Lexer::new(code);
+        let mut parser = Parser::new(lexer.tokenize());
+
+        let result = parser.parse();
+        assert!(result.is_ok(), "Parsing single else if should succeed");
+
+        let program = result.expect("Failed to parse else if");
+        assert_eq!(program.statements.len(), 1);
+        
+        if let Stmt::FunctionDecl { body, .. } = &program.statements[0] {
+            if let Stmt::If { else_if_branches, .. } = &body[1] {
+                assert_eq!(else_if_branches.len(), 1, "Should have exactly one else if branch");
+            } else {
+                panic!("Expected If statement");
+            }
+        } else {
+            panic!("Expected function declaration");
+        }
+    }
+
+    #[test]
+    fn test_else_if_multiple() {
+        let code = r#"
+fn main() -> i32 {
+    let score = 85
+    if score >= 90 {
+        println("A")
+    } else if score >= 80 {
+        println("B")
+    } else if score >= 70 {
+        println("C")
+    } else if score >= 60 {
+        println("D")
+    } else {
+        println("F")
+    }
+    return 0
+}
+"#;
+        let mut lexer = crate::lexer::lexer::Lexer::new(code);
+        let mut parser = Parser::new(lexer.tokenize());
+
+        let result = parser.parse();
+        assert!(result.is_ok(), "Parsing multiple else if should succeed");
+
+        let program = result.expect("Failed to parse multiple else if");
+        assert_eq!(program.statements.len(), 1);
+        
+        if let Stmt::FunctionDecl { body, .. } = &program.statements[0] {
+            if let Stmt::If { else_if_branches, else_branch, .. } = &body[1] {
+                assert_eq!(else_if_branches.len(), 3, "Should have exactly three else if branches");
+                assert!(else_branch.is_some(), "Should have final else branch");
+            } else {
+                panic!("Expected If statement");
+            }
+        } else {
+            panic!("Expected function declaration");
+        }
+    }
+
+    #[test]
+    fn test_else_if_no_final_else() {
+        let code = r#"
+fn main() -> i32 {
+    let x = 10
+    if x > 20 {
+        println("Very high")
+    } else if x > 10 {
+        println("High")
+    } else if x > 5 {
+        println("Medium")
+    }
+    return 0
+}
+"#;
+        let mut lexer = crate::lexer::lexer::Lexer::new(code);
+        let mut parser = Parser::new(lexer.tokenize());
+
+        let result = parser.parse();
+        assert!(result.is_ok(), "Parsing else if without final else should succeed");
+
+        let program = result.expect("Failed to parse else if without final else");
+        assert_eq!(program.statements.len(), 1);
+        
+        if let Stmt::FunctionDecl { body, .. } = &program.statements[0] {
+            if let Stmt::If { else_if_branches, else_branch, .. } = &body[1] {
+                assert_eq!(else_if_branches.len(), 2, "Should have exactly two else if branches");
+                assert!(else_branch.is_none(), "Should not have final else branch");
+            } else {
+                panic!("Expected If statement");
+            }
+        } else {
+            panic!("Expected function declaration");
+        }
+    }
+
+    #[test]
+    fn test_nested_else_if() {
+        let code = r#"
+fn main() -> i32 {
+    let x = 10
+    let y = 20
+    if x > 15 {
+        if y > 25 {
+            println("Both high")
+        } else if y > 15 {
+            println("Y medium, X high")
+        } else {
+            println("Y low, X high")
+        }
+    } else if x > 5 {
+        println("X medium")
+    } else {
+        println("X low")
+    }
+    return 0
+}
+"#;
+        let mut lexer = crate::lexer::lexer::Lexer::new(code);
+        let mut parser = Parser::new(lexer.tokenize());
+
+        let result = parser.parse();
+        assert!(result.is_ok(), "Parsing nested else if should succeed");
+
+        let program = result.expect("Failed to parse nested else if");
+        assert_eq!(program.statements.len(), 1);
     }
 }
