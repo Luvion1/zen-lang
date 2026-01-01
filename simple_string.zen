@@ -1,0 +1,5 @@
+// Simple string test
+fn main() -> i32 {
+    let name = "test"
+    return 0
+}

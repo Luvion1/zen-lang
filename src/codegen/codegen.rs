@@ -4,7 +4,7 @@ use crate::codegen::ir::StringGenerator;
 use crate::token::TokenType;
 use std::collections::HashMap;
 
-#[allow(clippy::new_without_default)]
+#[derive(Default)]
 pub struct CodeGenerator {
     functions: HashMap<String, (Vec<String>, String)>,
     variables: HashMap<String, (String, bool, usize)>,
@@ -14,22 +14,12 @@ pub struct CodeGenerator {
     string_gen: StringGenerator,
 }
 
-impl Default for CodeGenerator {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+const VOID_TYPE: &str = "void";
+const I32_TYPE: &str = "i32";
 
 impl CodeGenerator {
     pub fn new() -> Self {
-        CodeGenerator {
-            functions: HashMap::new(),
-            variables: HashMap::new(),
-            current_function: None,
-            counter: 0,
-            label_counter: 0,
-            string_gen: StringGenerator::new(),
-        }
+        Self::default()
     }
 
     pub fn generate(&mut self, program: &crate::ast::program::Program) -> String {
@@ -51,12 +41,9 @@ impl CodeGenerator {
         let strings = self.string_gen.finish();
 
         for (i, s) in strings.iter().enumerate() {
-            ir.push_str(&format!(
-                "@.str.{} = private unnamed_addr constant [{} x i8] c\"{}\\00\"\n",
-                i,
-                s.len() + 1,
-                self.escape_for_llvm(s)
-            ));
+            use std::fmt::Write;
+            writeln!(ir, "@.str.{} = private unnamed_addr constant [{} x i8] c\"{}\\00\"",
+                i, s.len() + 1, self.escape_for_llvm(s)).unwrap();
         }
         #[allow(clippy::single_char_add_str)]
         ir.push_str("\n");
@@ -97,7 +84,7 @@ impl CodeGenerator {
         {
             let param_types: Vec<String> = params.iter().map(|(_, t)| t.clone()).collect();
             self.functions
-                .insert(name.clone(), (param_types, return_type.clone()));
+                .insert(name.to_string(), (param_types, return_type.to_string()));
         }
     }
 
@@ -111,7 +98,7 @@ impl CodeGenerator {
         match zen_type {
             "i8" => "i8",
             "i16" => "i16",
-            "i32" => "i32",
+            I32_TYPE => "i32",
             "i64" => "i64",
             "u8" => "i8",
             "u16" => "i16",
@@ -122,8 +109,8 @@ impl CodeGenerator {
             "bool" => "i1",
             "str" => "i8*",
             "char" => "i8",
-            "void" => "void",
-            _ => "i32",
+            VOID_TYPE => "void",
+            _ => I32_TYPE,
         }
     }
 
@@ -151,7 +138,7 @@ impl CodeGenerator {
         body: &[Stmt],
         ir: &mut String,
     ) {
-        let old_function = self.current_function.clone();
+        let old_function = self.current_function.take();
         let old_vars = std::mem::take(&mut self.variables);
 
         self.current_function = Some(name.to_string());
@@ -201,7 +188,7 @@ impl CodeGenerator {
         }
 
         if !had_return {
-            if return_type == "void" {
+            if return_type == VOID_TYPE {
                 ir.push_str("  ret void\n");
             } else if let Some(value) = last_expr_value {
                 ir.push_str(&format!("  ret {} {}\n", llvm_return, value));
@@ -231,23 +218,44 @@ impl CodeGenerator {
                 is_mutable,
                 ..
             } => {
-                let zen_type = type_annotation
-                    .as_ref()
-                    .map(|s| s.as_str())
-                    .unwrap_or("i32");
+                let zen_type = if let Some(type_ann) = type_annotation {
+                    type_ann.as_str()
+                } else if let Some(init) = initializer {
+                    // Infer type from initializer
+                    match init {
+                        crate::ast::expr::Expr::StringLiteral { .. } => "str",
+                        crate::ast::expr::Expr::IntegerLiteral { .. } => I32_TYPE,
+                        crate::ast::expr::Expr::FloatLiteral { .. } => "f64",
+                        crate::ast::expr::Expr::BooleanLiteral { .. } => "bool",
+                        crate::ast::expr::Expr::CharLiteral { .. } => "char",
+                        _ => I32_TYPE,
+                    }
+                } else {
+                    I32_TYPE
+                };
                 let llvm_type = self.get_llvm_type(zen_type);
 
                 let id = self.fresh_id();
-                ir.push_str(&format!("  %{} = alloca {}\n", id, llvm_type));
+                // Handle string pointer allocation
+                if zen_type == "str" {
+                    ir.push_str(&format!("  %{} = alloca i8*\n", id));
+                } else {
+                    ir.push_str(&format!("  %{} = alloca {}\n", id, llvm_type));
+                }
                 self.variables
                     .insert(name.clone(), (zen_type.to_string(), *is_mutable, id));
 
                 if let Some(init) = initializer {
                     let init_value = self.generate_expression(init, ir);
-                    ir.push_str(&format!(
-                        "  store {} {}, {}* %{}\n",
-                        llvm_type, init_value, llvm_type, id
-                    ));
+                    // Handle string types specially
+                    if zen_type == "str" {
+                        ir.push_str(&format!("  store i8* {}, i8** %{}\n", init_value, id));
+                    } else {
+                        ir.push_str(&format!(
+                            "  store {} {}, {}* %{}\n",
+                            llvm_type, init_value, llvm_type, id
+                        ));
+                    }
                 }
             }
 
@@ -258,10 +266,16 @@ impl CodeGenerator {
                         let (zen_type, _, alloc_id) = var_info;
                         let llvm_type = self.get_llvm_type(&zen_type);
                         let value_str = self.generate_expression(value, ir);
-                        ir.push_str(&format!(
-                            "  store {} {}, {}* %{}\n",
-                            llvm_type, value_str, llvm_type, alloc_id
-                        ));
+                        
+                        // Handle string assignment specially
+                        if zen_type == "str" {
+                            ir.push_str(&format!("  store i8* {}, i8** %{}\n", value_str, alloc_id));
+                        } else {
+                            ir.push_str(&format!(
+                                "  store {} {}, {}* %{}\n",
+                                llvm_type, value_str, llvm_type, alloc_id
+                            ));
+                        }
                     }
                 }
             }
@@ -424,10 +438,16 @@ impl CodeGenerator {
                     let (zen_type, _, alloc_id) = var_info;
                     let llvm_type = self.get_llvm_type(&zen_type);
                     let id = self.fresh_id();
-                    ir.push_str(&format!(
-                        "  %{} = load {}, {}* %{}\n",
-                        id, llvm_type, llvm_type, alloc_id
-                    ));
+                    
+                    // Handle string loading specially
+                    if zen_type == "str" {
+                        ir.push_str(&format!("  %{} = load i8*, i8** %{}\n", id, alloc_id));
+                    } else {
+                        ir.push_str(&format!(
+                            "  %{} = load {}, {}* %{}\n",
+                            id, llvm_type, llvm_type, alloc_id
+                        ));
+                    }
                     format!("%{}", id)
                 } else {
                     format!("%{}", name)
@@ -435,17 +455,15 @@ impl CodeGenerator {
             }
 
             Expr::BinaryOp { left, op, right } => {
-                #[allow(clippy::unnecessary_map_or)]
                 let is_float = matches!(left.as_ref(), Expr::FloatLiteral { .. })
                     || matches!(right.as_ref(), Expr::FloatLiteral { .. })
-                    || matches!(left.as_ref(), Expr::Identifier { name, .. } if self.variables.get(name).map_or(false, |(t, _, _)| t == "f64" || t == "f32"))
-                    || matches!(right.as_ref(), Expr::Identifier { name, .. } if self.variables.get(name).map_or(false, |(t, _, _)| t == "f64" || t == "f32"));
+                    || matches!(left.as_ref(), Expr::Identifier { name, .. } if self.variables.get(name).is_some_and(|(t, _, _)| t == "f64" || t == "f32"))
+                    || matches!(right.as_ref(), Expr::Identifier { name, .. } if self.variables.get(name).is_some_and(|(t, _, _)| t == "f64" || t == "f32"));
 
-                #[allow(clippy::unnecessary_map_or)]
                 let is_bool = matches!(left.as_ref(), Expr::BooleanLiteral { .. })
                     || matches!(right.as_ref(), Expr::BooleanLiteral { .. })
-                    || matches!(left.as_ref(), Expr::Identifier { name, .. } if self.variables.get(name).map_or(false, |(t, _, _)| t == "bool"))
-                    || matches!(right.as_ref(), Expr::Identifier { name, .. } if self.variables.get(name).map_or(false, |(t, _, _)| t == "bool"))
+                    || matches!(left.as_ref(), Expr::Identifier { name, .. } if self.variables.get(name).is_some_and(|(t, _, _)| t == "bool"))
+                    || matches!(right.as_ref(), Expr::Identifier { name, .. } if self.variables.get(name).is_some_and(|(t, _, _)| t == "bool"))
                     || matches!(op.kind, TokenType::And | TokenType::Or);
 
                 let left_val = self.generate_expression(left, ir);
@@ -488,7 +506,10 @@ impl CodeGenerator {
                             TokenType::GreaterEqual => "icmp sge",
                             TokenType::And => "and",
                             TokenType::Or => "or",
-                            _ => "add",
+                            _ => {
+                                eprintln!("Warning: Unknown operator {:?}, using add", op);
+                                "add"
+                            }
                         },
                     )
                 };
@@ -564,26 +585,22 @@ impl CodeGenerator {
                                 }
                                 Expr::Identifier { name, .. } => {
                                     let val = self.generate_expression(arg, ir);
-                                    #[allow(clippy::unnecessary_map_or)]
                                     let is_float = self
                                         .variables
                                         .get(name)
-                                        .map_or(false, |(t, _, _)| t == "f64" || t == "f32");
-                                    #[allow(clippy::unnecessary_map_or)]
+                                        .is_some_and(|(t, _, _)| t == "f64" || t == "f32");
                                     let is_bool = self
                                         .variables
                                         .get(name)
-                                        .map_or(false, |(t, _, _)| t == "bool");
-                                    #[allow(clippy::unnecessary_map_or)]
+                                        .is_some_and(|(t, _, _)| t == "bool");
                                     let is_string = self
                                         .variables
                                         .get(name)
-                                        .map_or(false, |(t, _, _)| t == "str");
-                                    #[allow(clippy::unnecessary_map_or)]
+                                        .is_some_and(|(t, _, _)| t == "str");
                                     let is_char = self
                                         .variables
                                         .get(name)
-                                        .map_or(false, |(t, _, _)| t == "char");
+                                        .is_some_and(|(t, _, _)| t == "char");
                                     
                                     if is_string {
                                         let call_id = self.fresh_id();
@@ -616,11 +633,10 @@ impl CodeGenerator {
                                 }
                                 Expr::BinaryOp { op, .. } => {
                                     let val = self.generate_expression(arg, ir);
-                                    #[allow(clippy::unnecessary_map_or)]
                                     let is_float = matches!(arg, Expr::BinaryOp { left, right, .. }
                                         if matches!(left.as_ref(), Expr::FloatLiteral { .. }) || matches!(right.as_ref(), Expr::FloatLiteral { .. }) ||
-                                            matches!(left.as_ref(), Expr::Identifier { name, .. } if self.variables.get(name).map_or(false, |(t,_,_)| t=="f64"||t=="f32")) ||
-                                            matches!(right.as_ref(), Expr::Identifier { name, .. } if self.variables.get(name).map_or(false, |(t,_,_)| t=="f64"||t=="f32")));
+                                            matches!(left.as_ref(), Expr::Identifier { name, .. } if self.variables.get(name).is_some_and(|(t,_,_)| t=="f64"||t=="f32")) ||
+                                            matches!(right.as_ref(), Expr::Identifier { name, .. } if self.variables.get(name).is_some_and(|(t,_,_)| t=="f64"||t=="f32")));
                                     
                                     let is_bool = matches!(op.kind, TokenType::And | TokenType::Or | TokenType::EqualEqual | TokenType::NotEqual | TokenType::LessThan | TokenType::LessEqual | TokenType::GreaterThan | TokenType::GreaterEqual);
                                     
@@ -661,7 +677,7 @@ impl CodeGenerator {
                             let arg_value = self.generate_expression(arg, ir);
                             arg_values.push(format!("{} {}", llvm_param_type, arg_value));
                         }
-                        if return_type_clone == "void" {
+                        if return_type_clone == VOID_TYPE {
                             ir.push_str(&format!(
                                 "  call void @{}({})\n",
                                 name,
@@ -692,7 +708,13 @@ impl CodeGenerator {
     }
 
     fn generate_string_literal(&mut self, value: &str, ir: &mut String) -> String {
-        let (_, idx) = self.string_gen.get_string_literal(value);
+        let (_, idx) = match self.string_gen.get_string_literal(value) {
+            Ok(result) => result,
+            Err(e) => {
+                eprintln!("Error: {}", e);
+                return "null".to_string();
+            }
+        };
         let ptr_id = self.fresh_id();
         ir.push_str(&format!(
             "  %{} = getelementptr inbounds [{} x i8], [{} x i8]* @.str.{}, i64 0, i64 0\n",

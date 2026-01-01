@@ -362,7 +362,7 @@ impl TypeChecker {
                 token,
             } => {
                 let name = match **callee {
-                    Expr::Identifier { ref name, .. } => name.clone(),
+                    Expr::Identifier { ref name, .. } => name,
                     _ => return Err("Can only call named functions".to_string()),
                 };
 
@@ -386,7 +386,7 @@ impl TypeChecker {
                     return Ok("void".to_string());
                 }
 
-                if let Some((params, return_type)) = self.functions.get(&name) {
+                if let Some((params, return_type)) = self.functions.get(name) {
                     if args.len() != params.len() {
                         return Err(format!(
                             "Function '{}' expects {} arguments, got {} at {}:{}",
@@ -398,10 +398,7 @@ impl TypeChecker {
                         ));
                     }
 
-                    #[allow(clippy::unused_enumerate_index)]
-                    for (_i, (arg, (param_name, param_type))) in
-                        args.iter().zip(params.iter()).enumerate()
-                    {
+                    for (arg, (param_name, param_type)) in args.iter().zip(params.iter()) {
                         let arg_type = self.check_expression(arg)?;
                         if arg_type != *param_type {
                             return Err(format!(

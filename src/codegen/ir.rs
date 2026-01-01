@@ -134,7 +134,7 @@ impl StringGenerator {
     }
 
     pub fn add_string(&mut self, value: &str) {
-        if !self.strings.contains(&value.to_string()) {
+        if !self.strings.iter().any(|s| s == value) {
             self.strings.push(value.to_string());
         }
     }
@@ -145,19 +145,19 @@ impl StringGenerator {
         idx
     }
 
-    pub fn get_string_literal(&self, value: &str) -> (String, usize) {
-        if let Some((i, _)) = self.strings.iter().enumerate().find(|(_, s)| *s == value) {
-            return (format!("\"{}\\00\"", escape_for_llvm(value)), i);
+    pub fn get_string_literal(&self, value: &str) -> Result<(String, usize), String> {
+        if let Some(i) = self.strings.iter().position(|s| s == value) {
+            return Ok((format!("\"{}\\00\"", escape_for_llvm(value)), i));
         }
 
-        panic!(
+        Err(format!(
             "String '{}' was not pre-collected. Call generate_strings first.",
             value
-        );
+        ))
     }
 
-    pub fn finish(&self) -> Vec<String> {
-        self.strings.clone()
+    pub fn finish(&self) -> &[String] {
+        &self.strings
     }
 }
 

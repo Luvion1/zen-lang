@@ -566,6 +566,9 @@ impl Parser {
     fn match_string(&mut self) -> Option<Expr> {
         if self.check(TokenType::StringLiteral) {
             let token = self.advance();
+            if token.lexeme.len() < 2 {
+                return None; // Invalid string literal
+            }
             let value = token.lexeme[1..token.lexeme.len() - 1].to_string();
             return Some(Expr::StringLiteral { value, token });
         }
@@ -575,7 +578,10 @@ impl Parser {
     fn match_char(&mut self) -> Option<Expr> {
         if self.check(TokenType::CharLiteral) {
             let token = self.advance();
-            let value = token.lexeme.chars().nth(1).unwrap();
+            if token.lexeme.len() != 3 || !token.lexeme.starts_with('\'') || !token.lexeme.ends_with('\'') {
+                return None; // Invalid char literal format
+            }
+            let value = token.lexeme.chars().nth(1).unwrap_or('\0');
             return Some(Expr::CharLiteral { value, token });
         }
         None
@@ -583,7 +589,7 @@ impl Parser {
 
     fn consume_identifier(&mut self) -> Result<String, String> {
         if self.check(TokenType::Identifier) {
-            return Ok(self.advance().lexeme.clone());
+            return Ok(self.advance().lexeme);
         }
         Err(format!("Expected identifier, got {:?}", self.peek()))
     }
@@ -644,7 +650,7 @@ mod tests {
         let result = parser.parse();
         assert!(result.is_ok(), "Parsing should succeed");
 
-        let program = result.unwrap();
+        let program = result.expect("Failed to parse program");
         assert_eq!(program.statements.len(), 1);
     }
 
@@ -806,7 +812,7 @@ fn main() -> i32 {
         let result = parser.parse();
         assert!(result.is_ok(), "Parsing complex program should work");
 
-        let program = result.unwrap();
+        let program = result.expect("Failed to parse complex program");
         assert!(!program.statements.is_empty());
     }
 
@@ -820,7 +826,7 @@ fn main() -> i32 {
         let result = parser.parse();
         assert!(result.is_ok());
 
-        let program = result.unwrap();
+        let program = result.expect("Failed to parse multiple declarations");
         assert_eq!(program.statements.len(), 2);
     }
 }

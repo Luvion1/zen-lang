@@ -5,6 +5,9 @@ use crate::lexer::lexer::Lexer;
 use crate::parser::parser::Parser;
 use crate::typechecker::typechecker::TypeChecker;
 
+const LLC_CMD: &str = "llc";
+const GCC_CMD: &str = "gcc";
+
 pub struct Compiler;
 
 impl Compiler {
@@ -52,7 +55,7 @@ impl Compiler {
 
         std::fs::write(&ll_path, llvm_ir)?;
 
-        let llc_result = std::process::Command::new("llc")
+        let llc_result = std::process::Command::new(LLC_CMD)
             .arg("-filetype=obj")
             .arg("-o")
             .arg(&obj_path)
@@ -61,11 +64,12 @@ impl Compiler {
 
         if !llc_result.status.success() {
             eprintln!("error: llc compilation failed");
-            eprintln!("{}", String::from_utf8_lossy(&llc_result.stderr));
+            let stderr = std::str::from_utf8(&llc_result.stderr).unwrap_or("Invalid UTF-8");
+            eprintln!("{}", stderr);
             return Err(anyhow::anyhow!("llc compilation failed"));
         }
 
-        let linker_result = std::process::Command::new("gcc")
+        let linker_result = std::process::Command::new(GCC_CMD)
             .arg("-no-pie")
             .arg(&obj_path)
             .arg("-o")
@@ -79,7 +83,7 @@ impl Compiler {
         if linker_result.status.success() {
             println!("success: Compiled: {}", output_path.display());
         } else {
-            let stderr = String::from_utf8_lossy(&linker_result.stderr);
+            let stderr = std::str::from_utf8(&linker_result.stderr).unwrap_or("Invalid UTF-8");
             eprintln!("\nerror details: {}", stderr);
             return Err(anyhow::anyhow!("linking failed: {}", stderr));
         }
@@ -102,8 +106,8 @@ impl Compiler {
             anyhow::bail!("error: failed to execute: {}", result.status);
         }
 
-        print!("{}", String::from_utf8_lossy(&result.stdout));
-        eprint!("{}", String::from_utf8_lossy(&result.stderr));
+        print!("{}", std::str::from_utf8(&result.stdout).unwrap_or("Invalid UTF-8"));
+        eprint!("{}", std::str::from_utf8(&result.stderr).unwrap_or("Invalid UTF-8"));
 
         Ok(())
     }
