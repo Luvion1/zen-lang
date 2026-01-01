@@ -2,14 +2,16 @@
 
 # Zen Programming Language
 
-**Simplicity without Sacrifice, Safety without Complexity**
+**Modern Systems Programming Made Simple**
 
 [![CI](https://github.com/Luvion1/zen-lang/actions/workflows/ci.yml/badge.svg)](https://github.com/Luvion1/zen-lang/actions/workflows/ci.yml)
 [![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/Luvion1/zen-lang?style=social)](https://github.com/Luvion1/zen-lang/stargazers)
-[![GitHub issues](https://img.shields.io/github/issues/Luvion1/zen-lang)](https://github.com/Luvion1/zen-lang/issues)
-[![GitHub forks](https://img.shields.io/github/forks/Luvion1/zen-lang?style=social)](https://github.com/Luvion1/zen-lang/network/members)
+[![Release](https://img.shields.io/github/v/release/Luvion1/zen-lang?include_prereleases)](https://github.com/Luvion1/zen-lang/releases)
+
+*Combining the memory safety of Rust, the performance of C++, and the simplicity of Go*
+
+[**Quick Start**](#quick-start) • [**Documentation**](#documentation) • [**Examples**](examples/) • [**Contributing**](#contributing)
 
 </div>
 
@@ -17,133 +19,46 @@
 
 ## Overview
 
-**Zen** is a modern systems programming language designed for performance, safety, and simplicity. It combines the memory safety of Rust, the performance of C++, and the productivity of Go - with a significantly gentler learning curve.
+Zen is a modern systems programming language designed for **performance**, **safety**, and **developer productivity**. It provides compile-time memory safety guarantees without garbage collection, while maintaining a clean and intuitive syntax.
 
 ### Key Features
 
 | Feature | Description |
-|----------|-------------|
-| 🚀 **High Performance** | C/C++ level performance with zero-cost abstractions |
-| 🛡️ **Memory Safe** | Compile-time memory safety guarantees without garbage collection |
-| 📝 **Simple Syntax** | Clean, readable syntax inspired by Rust and Go |
-| 🔥 **Modern** | Auto type inference, clean function signatures |
-| 🎯 **Explicit** | Ownership transfer with `<-`, mutability with `mut` |
+|---------|-------------|
+| 🚀 **Zero-Cost Performance** | C/C++ level performance with modern optimizations |
+| 🛡️ **Memory Safety** | Compile-time guarantees without runtime overhead |
+| 📝 **Clean Syntax** | Intuitive design inspired by Rust and Go |
+| 🔥 **Modern Tooling** | Built-in package manager, formatter, and LSP |
+| 🎯 **Explicit Control** | Clear ownership semantics and mutability |
 
-### Why Zen?
+### Language Comparison
 
-| Language | Performance | Safety | Simplicity | GC | Learning Curve |
-|-----------|-------------|--------|------------|-----|----------------|
-| C/C++    | ⭐⭐⭐⭐⭐     | ⭐       | ⭐⭐         | No | ⭐⭐             |
-| Rust     | ⭐⭐⭐⭐⭐     | ⭐⭐⭐⭐⭐  | ⭐⭐         | No | ⭐⭐             |
-| Go       | ⭐⭐⭐⭐      | ⭐⭐⭐⭐    | ⭐⭐⭐⭐       | Yes| ⭐⭐⭐⭐          |
-| **Zen** | ⭐⭐⭐⭐⭐     | ⭐⭐⭐⭐⭐  | ⭐⭐⭐⭐      | No | ⭐⭐⭐⭐          |
+| Language | Performance | Safety | Simplicity | GC-Free | Learning Curve |
+|----------|-------------|--------|------------|---------|----------------|
+| C/C++    | ⭐⭐⭐⭐⭐     | ⭐       | ⭐⭐         | ✅      | ⭐⭐             |
+| Rust     | ⭐⭐⭐⭐⭐     | ⭐⭐⭐⭐⭐  | ⭐⭐         | ✅      | ⭐⭐             |
+| Go       | ⭐⭐⭐⭐      | ⭐⭐⭐⭐    | ⭐⭐⭐⭐       | ❌      | ⭐⭐⭐⭐          |
+| **Zen**  | ⭐⭐⭐⭐⭐     | ⭐⭐⭐⭐⭐  | ⭐⭐⭐⭐      | ✅      | ⭐⭐⭐⭐          |
 
 ---
 
 ## Quick Start
 
-### One-Click Installation ⚡
+### Installation
 
-**Just run the install script - everything is automatic!**
+**One-line installation:**
 
 ```bash
-# Remote installation (recommended)
 curl -sSL https://raw.githubusercontent.com/Luvion1/zen-lang/main/install.sh | bash
-
-# Or clone and install locally
-git clone https://github.com/Luvion1/zen-lang.git
-cd zen-lang
-./install.sh
 ```
 
-**That's it!** The script will:
-- ✅ Detect your OS (Linux, macOS, Windows)
-- ✅ Detect your architecture (x86_64, ARM64)
-- ✅ Check prerequisites (Rust, Cargo, curl/wget)
-- ✅ Build from source
-- ✅ Install to `~/.zen/bin`
-- ✅ Add to PATH automatically
-- ✅ Test installation
-- ✅ Show completion message
-
-### After Installation
-
-```bash
-# Restart terminal or run:
-source ~/.bashrc
-
-# Verify installation
-zen --version
-
-# Create and run your first program
-echo 'fn main() -> i32 { println("Hello, Zen!"); return 0 }' > hello.zen
-zen run hello.zen
-```
-
-### Installation Options
-
-```bash
-# Install to custom directory
-INSTALL_DIR=/opt/zen curl -sSL https://raw.githubusercontent.com/Luvion1/zen-lang/main/install.sh | bash
-
-# Uninstall Zen
-curl -sSL https://raw.githubusercontent.com/Luvion1/zen-lang/main/install.sh | bash -s -- --clean
-
-# View help
-curl -sSL https://raw.githubusercontent.com/Luvion1/zen-lang/main/install.sh | bash -s -- --help
-```
-
-### Manual Installation
-
-If you prefer manual installation:
-
-#### From Source
+**Manual installation:**
 
 ```bash
 git clone https://github.com/Luvion1/zen-lang.git
 cd zen-lang
 cargo build --release
 sudo cp target/release/zen /usr/local/bin/
-```
-
-#### From Release Binaries
-
-```bash
-# Download latest release from
-# https://github.com/Luvion1/zen-lang/releases
-
-# Linux (x86_64)
-curl -L https://github.com/Luvion1/zen-lang/releases/download/v0.0.1/zen-linux-x86_64 -o zen
-chmod +x zen
-sudo mv zen /usr/local/bin/
-
-# macOS (Intel x86_64)
-curl -L https://github.com/Luvion1/zen-lang/releases/download/v0.0.1/zen-macos-x86_64 -o zen
-chmod +x zen
-sudo mv zen /usr/local/bin/
-
-# Windows
-Invoke-WebRequest -Uri "https://github.com/Luvion1/zen-lang/releases/download/v0.0.1/zen-windows-x86_64.exe" -OutFile "zen.exe"
-```
-
-#### From Release
-
-```bash
-# Download the latest release from
-# https://github.com/Luvion1/zen-lang/releases
-
-# Linux (x86_64)
-curl -L https://github.com/Luvion1/zen-lang/releases/download/v0.0.1/zen-linux-x86_64 -o zen
-chmod +x zen
-sudo mv zen /usr/local/bin/
-
-# macOS (Intel x86_64)
-curl -L https://github.com/Luvion1/zen-lang/releases/download/v0.0.1/zen-macos-x86_64 -o zen
-chmod +x zen
-sudo mv zen /usr/local/bin/
-
-# Windows
-Invoke-WebRequest -Uri "https://github.com/Luvion1/zen-lang/releases/download/v0.0.1/zen-windows-x86_64.exe" -OutFile "zen.exe"
 ```
 
 ### Your First Program
@@ -157,22 +72,16 @@ fn main() -> i32 {
 }
 ```
 
-Compile and run:
+Run it:
 
 ```bash
-# Compile (like `go build`)
-zen compile hello.zen
-./hello
-
-# Or compile and run (like `go run`)
 zen run hello.zen
-
 # Output: Hello, Zen!
 ```
 
 ---
 
-## Language Tour
+## Language Features
 
 ### Variables & Types
 
@@ -189,14 +98,7 @@ fn main() -> i32 {
 
     // Type inference
     let x = 10        // inferred as i32
-    let pi = 3.14159 // inferred as f64
-
-    // Primitive types
-    let integer: i32 = 100
-    let floating: f64 = 3.14
-    let boolean: bool = true
-    let text: str = "Hello"
-    let character: char = 'Z'
+    let pi = 3.14159  // inferred as f64
 
     return 0
 }
@@ -206,7 +108,7 @@ fn main() -> i32 {
 
 ```zen
 fn add(a: i32, b: i32) -> i32 {
-    a + b
+    a + b  // implicit return
 }
 
 fn greet(name: str) -> void {
@@ -215,7 +117,7 @@ fn greet(name: str) -> void {
 
 fn main() -> i32 {
     let result = add(10, 20)
-    greet("Zen")
+    greet("World")
     return 0
 }
 ```
@@ -236,52 +138,49 @@ fn main() -> i32 {
     // While Loop
     let mut i = 0
     while i < 5 {
-        println(i)
+        println("Count: {i}")
         i = i + 1
     }
 
     // For Loop (C-style)
     for (let mut j = 0; j < 3; j = j + 1) {
-        println("Count: {j}")
-    }
-
-    // Match Expression
-    match x {
-        1 => println("One"),
-        2 => println("Two"),
-        _ => println("Other")
+        println("Iteration: {j}")
     }
 
     return 0
 }
 ```
 
-### Structs
+### String Interpolation
 
 ```zen
-struct Point {
-    x: i32
-    y: i32
+fn main() -> i32 {
+    let name = "Alice"
+    let age = 25
+    let score = calculate_score()
+    
+    println("Hello, {name}! You are {age} years old.")
+    println("Your score is: {score}")
+    println("Double score: {multiply(score, 2)}")
+    
+    return 0
 }
+```
 
-struct Person {
-    name: str
-    age: i32
-    email: str
-}
+### Complex Expressions
+
+```zen
+fn add(a: i32, b: i32) -> i32 { a + b }
+fn multiply(x: i32, y: i32) -> i32 { x * y }
 
 fn main() -> i32 {
-    let p = Point { x: 10, y: 20 }
-
-    let mut person = Person {
-        name: "Alice",
-        age: 25,
-        email: "alice@example.com"
-    }
-
-    person.age = 26  // OK: mutable
-    // p.x = 15       // Error: immutable
-
+    // Nested function calls
+    let result = multiply(add(5, 3), add(2, 4))
+    
+    // Function calls in expressions
+    let sum = add(10, 20) + add(5, 15)
+    
+    println("Result: {result}, Sum: {sum}")
     return 0
 }
 ```
@@ -289,6 +188,8 @@ fn main() -> i32 {
 ---
 
 ## Compiler Architecture
+
+The Zen compiler follows a traditional multi-pass architecture with clear separation of concerns:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -356,7 +257,7 @@ zen compile input.zen -o output
 # Compile and run (like `go run`)
 zen run input.zen
 
-# Tokenize source code
+# Tokenize source code (for debugging)
 zen tokenize input.zen
 
 # Display help
@@ -459,39 +360,11 @@ We welcome contributions from everyone! Please see [CONTRIBUTING.md](docs/CONTRI
 ### How to Contribute
 
 1. **Fork the repository**
-   ```bash
-   # Click "Fork" on GitHub
-   ```
-
-2. **Create a feature branch**
-   ```bash
-   git checkout -b feature/amazing-feature
-   ```
-
-3. **Make your changes**
-   - Write code following project conventions
-   - Add tests for new functionality
-   - Update documentation
-
-4. **Test your changes**
-   ```bash
-   cargo test
-   cargo fmt
-   cargo clippy -- -D warnings
-   ```
-
-5. **Commit your changes**
-   ```bash
-   git add .
-   git commit -m "feat: add amazing feature"
-   ```
-
+2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
+3. **Make your changes** with tests and documentation
+4. **Test your changes**: `cargo test && cargo fmt && cargo clippy`
+5. **Commit your changes**: `git commit -m "feat: add amazing feature"`
 6. **Push and create Pull Request**
-   ```bash
-   git push origin feature/amazing-feature
-   ```
-
-7. **Open a Pull Request** on GitHub with clear description
 
 ### Areas for Contribution
 
