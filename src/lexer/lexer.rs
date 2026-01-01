@@ -7,6 +7,11 @@ pub struct Lexer<'a> {
     input: Peekable<Chars<'a>>,
     line: usize,
     column: usize,
+    // Enhanced state tracking
+    start_line: usize,
+    start_column: usize,
+    errors: Vec<String>,
+    current_lexeme: String,
 }
 
 impl<'a> Lexer<'a> {
@@ -15,6 +20,10 @@ impl<'a> Lexer<'a> {
             input: input.chars().peekable(),
             line: 1,
             column: 1,
+            start_line: 1,
+            start_column: 1,
+            errors: Vec::new(),
+            current_lexeme: String::new(),
         }
     }
 
@@ -22,13 +31,131 @@ impl<'a> Lexer<'a> {
         let mut tokens = Vec::new();
 
         while self.peek().is_some() {
-            if let Some(token) = self.next_token() {
-                tokens.push(token);
+            self.start_line = self.line;
+            self.start_column = self.column;
+            self.current_lexeme.clear();
+            
+            match self.next_token() {
+                Some(token) => {
+                    // Validate token before adding
+                    if self.validate_token(&token) {
+                        tokens.push(token);
+                    }
+                }
+                None => continue,
             }
         }
 
         tokens.push(Token::eof(self.line, self.column));
+        
+        // Report any lexical errors
+        if !self.errors.is_empty() {
+            eprintln!("Lexical warnings/errors:");
+            for error in &self.errors {
+                eprintln!("  {}", error);
+            }
+        }
+        
         tokens
+    }
+
+    fn validate_token(&mut self, token: &Token) -> bool {
+        match &token.kind {
+            TokenType::IntegerLiteral => {
+                // Enhanced integer validation
+                match token.lexeme.parse::<i64>() {
+                    Ok(val) if val > i32::MAX as i64 || val < i32::MIN as i64 => {
+                        self.report_warning(format!(
+                            "Integer literal '{}' may overflow i32 at {}:{}",
+                            token.lexeme, token.line, token.column
+                        ));
+                        true
+                    }
+                    Ok(_) => true,
+                    Err(_) => {
+                        self.report_error(format!(
+                            "Invalid integer literal '{}' at {}:{}",
+                            token.lexeme, token.line, token.column
+                        ));
+                        false
+                    }
+                }
+            }
+            
+            TokenType::FloatLiteral => {
+                // Enhanced float validation
+                match token.lexeme.parse::<f64>() {
+                    Ok(val) if !val.is_finite() => {
+                        self.report_error(format!(
+                            "Invalid float literal '{}' (non-finite) at {}:{}",
+                            token.lexeme, token.line, token.column
+                        ));
+                        false
+                    }
+                    Ok(_) => true,
+                    Err(_) => {
+                        self.report_error(format!(
+                            "Invalid float literal '{}' at {}:{}",
+                            token.lexeme, token.line, token.column
+                        ));
+                        false
+                    }
+                }
+            }
+            
+            TokenType::Identifier => {
+                // Enhanced identifier validation
+                if token.lexeme.is_empty() {
+                    self.report_error(format!("Empty identifier at {}:{}", token.line, token.column));
+                    return false;
+                }
+                
+                if token.lexeme.len() > 255 {
+                    self.report_warning(format!(
+                        "Identifier '{}' is very long ({} chars) at {}:{}",
+                        token.lexeme, token.lexeme.len(), token.line, token.column
+                    ));
+                }
+                
+                // Check for reserved words that might be missed
+                if self.is_reserved_word(&token.lexeme) {
+                    self.report_warning(format!(
+                        "Identifier '{}' conflicts with reserved word at {}:{}",
+                        token.lexeme, token.line, token.column
+                    ));
+                }
+                
+                true
+            }
+            
+            TokenType::StringLiteral => {
+                // Enhanced string validation
+                if token.lexeme.len() > 1000 {
+                    self.report_warning(format!(
+                        "String literal is very long ({} chars) at {}:{}",
+                        token.lexeme.len(), token.line, token.column
+                    ));
+                }
+                true
+            }
+            
+            _ => true,
+        }
+    }
+
+    fn report_error(&mut self, message: String) {
+        self.errors.push(format!("ERROR: {}", message));
+    }
+
+    fn report_warning(&mut self, message: String) {
+        self.errors.push(format!("WARNING: {}", message));
+    }
+
+    fn is_reserved_word(&self, word: &str) -> bool {
+        matches!(word, 
+            "abstract" | "async" | "await" | "become" | "box" | "do" | "final" | 
+            "macro" | "override" | "priv" | "typeof" | "unsized" | "virtual" | "yield"
+        )
     }
 
     fn next_token(&mut self) -> Option<Token> {

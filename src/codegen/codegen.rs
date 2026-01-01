@@ -12,6 +12,7 @@ pub struct CodeGenerator {
     counter: usize,
     label_counter: usize,
     string_gen: StringGenerator,
+    last_register: Option<usize>,
 }
 
 const VOID_TYPE: &str = "void";
@@ -19,7 +20,15 @@ const I32_TYPE: &str = "i32";
 
 impl CodeGenerator {
     pub fn new() -> Self {
-        Self::default()
+        Self {
+            functions: HashMap::new(),
+            variables: HashMap::new(),
+            current_function: None,
+            counter: 0,
+            label_counter: 0,
+            string_gen: StringGenerator::new(),
+            last_register: None,
+        }
     }
 
     pub fn generate(&mut self, program: &crate::ast::program::Program) -> String {
@@ -94,7 +103,14 @@ impl CodeGenerator {
     fn fresh_id(&mut self) -> usize {
         let id = self.counter;
         self.counter += 1;
+        self.last_register = Some(id);
         id
+    }
+
+    fn fresh_label(&mut self) -> usize {
+        let label = self.label_counter;
+        self.label_counter += 1;
+        label
     }
 
     fn get_llvm_type(&self, zen_type: &str) -> &'static str {
@@ -113,7 +129,131 @@ impl CodeGenerator {
             "str" => "i8*",
             "char" => "i8",
             VOID_TYPE => "void",
-            _ => I32_TYPE,
+            _ => {
+                eprintln!("Warning: Unknown type '{}', defaulting to i32", zen_type);
+                I32_TYPE
+            }
+        }
+    }
+
+    fn infer_expression_type(&self, expr: &Expr) -> String {
+        match expr {
+            Expr::IntegerLiteral { .. } => "i32".to_string(),
+            Expr::FloatLiteral { .. } => "f64".to_string(),
+            Expr::BooleanLiteral { .. } => "bool".to_string(),
+            Expr::CharLiteral { .. } => "char".to_string(),
+            Expr::StringLiteral { .. } => "str".to_string(),
+            Expr::Identifier { name, .. } => {
+                self.variables.get(name)
+                    .map(|(t, _, _)| t.clone())
+                    .unwrap_or_else(|| {
+                        eprintln!("Warning: Cannot infer type for undefined variable '{}'", name);
+                        "i32".to_string()
+                    })
+            }
+            Expr::BinaryOp { left, op, .. } => {
+                match op.kind {
+                    TokenType::EqualEqual | TokenType::NotEqual |
+                    TokenType::LessThan | TokenType::LessEqual |
+                    TokenType::GreaterThan | TokenType::GreaterEqual |
+                    TokenType::And | TokenType::Or => "bool".to_string(),
+                    _ => self.infer_expression_type(left)
+                }
+            }
+            Expr::UnaryOp { operand, .. } => self.infer_expression_type(operand),
+            Expr::Call { callee, .. } => {
+                if let Expr::Identifier { name, .. } = callee.as_ref() {
+                    self.functions.get(name)
+                        .map(|(_, ret_type)| ret_type.clone())
+                        .unwrap_or_else(|| "i32".to_string())
+                } else {
+                    "i32".to_string()
+                }
+            }
+            _ => "i32".to_string(),
+        }
+    }
+
+    fn handle_type_coercion(
+        &mut self,
+        left_val: String,
+        right_val: String,
+        left_type: &str,
+        right_type: &str,
+        target_type: &str,
+        ir: &mut String,
+    ) -> (String, String, String) {
+        if left_type == right_type && left_type == target_type {
+            return (left_val, right_val, target_type.to_string());
+        }
+
+        let mut final_left = left_val;
+        let mut final_right = right_val;
+        let mut op_type = target_type.to_string();
+
+        // Handle numeric promotions
+        if (left_type == "i32" && right_type == "f64") || (left_type == "f64" && right_type == "i32") {
+            op_type = "f64".to_string();
+            
+            if left_type == "i32" {
+                let id = self.fresh_id();
+                ir.push_str(&format!("  %{} = sitofp i32 {} to double\n", id, final_left));
+                final_left = format!("%{}", id);
+            }
+            
+            if right_type == "i32" {
+                let id = self.fresh_id();
+                ir.push_str(&format!("  %{} = sitofp i32 {} to double\n", id, final_right));
+                final_right = format!("%{}", id);
+            }
+        }
+
+        // Handle boolean conversions
+        if target_type == "bool" && (left_type != "bool" || right_type != "bool") {
+            if left_type != "bool" {
+                let id = self.fresh_id();
+                ir.push_str(&format!("  %{} = icmp ne i32 {}, 0\n", id, final_left));
+                final_left = format!("%{}", id);
+            }
+            
+            if right_type != "bool" {
+                let id = self.fresh_id();
+                ir.push_str(&format!("  %{} = icmp ne i32 {}, 0\n", id, final_right));
+                final_right = format!("%{}", id);
+            }
+            op_type = "bool".to_string();
+        }
+
+        (final_left, final_right, op_type)
+    }
+
+    fn is_compatible_type(&self, target_type: &str, source_type: &str) -> bool {
+        // Enhanced type compatibility checking
+        match (target_type, source_type) {
+            // Exact matches
+            (a, b) if a == b => true,
+            
+            // Numeric promotions
+            ("f64", "f32") | ("f64", "i32") | ("f64", "i16") | ("f64", "i8") => true,
+            ("f32", "i32") | ("f32", "i16") | ("f32", "i8") => true,
+            ("i64", "i32") | ("i64", "i16") | ("i64", "i8") => true,
+            ("i32", "i16") | ("i32", "i8") => true,
+            ("i16", "i8") => true,
+            
+            // Unsigned to signed (with warning)
+            ("i32", "u32") | ("i16", "u16") | ("i8", "u8") => {
+                eprintln!("Warning: Implicit conversion from unsigned to signed type");
+                true
+            }
+            
+            // Boolean conversions
+            ("bool", "i32") | ("bool", "i16") | ("bool", "i8") => true,
+            ("i32", "bool") | ("i16", "bool") | ("i8", "bool") => true,
+            
+            // Character conversions
+            ("char", "i8") | ("i8", "char") => true,
+            
+            _ => false,
         }
     }
 
@@ -204,12 +344,6 @@ impl CodeGenerator {
 
         self.current_function = old_function;
         self.variables = old_vars;
-    }
-
-    fn fresh_label(&mut self) -> usize {
-        let id = self.label_counter;
-        self.label_counter += 1;
-        id
     }
 
     fn generate_function_statement(&mut self, stmt: &Stmt, ir: &mut String) {
@@ -305,34 +439,130 @@ impl CodeGenerator {
             Stmt::If {
                 condition,
                 then_branch,
+                else_if_branches,
                 else_branch,
                 ..
             } => {
                 let cond_value = self.generate_expression(condition, ir);
+                
+                // Convert i32 to i1 for branch condition
+                let bool_cond = if self.infer_expression_type(condition) == "bool" {
+                    // If it's already a comparison result (i32 from our conversion), convert back to i1
+                    let bool_id = self.fresh_id();
+                    ir.push_str(&format!("  %{} = icmp ne i32 {}, 0\n", bool_id, cond_value));
+                    format!("%{}", bool_id)
+                } else {
+                    // For other types, convert to bool
+                    let bool_id = self.fresh_id();
+                    ir.push_str(&format!("  %{} = icmp ne i32 {}, 0\n", bool_id, cond_value));
+                    format!("%{}", bool_id)
+                };
 
                 let then_label = self.fresh_label();
-                let else_label = self.fresh_label();
                 let end_label = self.fresh_label();
+                
+                // Determine the first alternative label
+                let first_alt_label = if !else_if_branches.is_empty() {
+                    self.fresh_label()
+                } else if else_branch.is_some() {
+                    self.fresh_label()
+                } else {
+                    end_label
+                };
 
+                // Branch to then or first alternative
                 ir.push_str(&format!(
-                    "  br i1 {}, label %then.{}, label %else.{}\n",
-                    cond_value, then_label, else_label
+                    "  br i1 {}, label %then.{}, label %{}{}{}",
+                    bool_cond, 
+                    then_label,
+                    if !else_if_branches.is_empty() { "elseif." } else if else_branch.is_some() { "else." } else { "end." },
+                    first_alt_label,
+                    "\n"
                 ));
 
+                // Generate then branch
                 ir.push_str(&format!("then.{}:\n", then_label));
+                let mut then_terminated = false;
                 for stmt in then_branch {
+                    if matches!(stmt, Stmt::Return { .. }) {
+                        then_terminated = true;
+                    }
                     self.generate_function_statement(stmt, ir);
                 }
-                ir.push_str(&format!("  br label %end.{}\n", end_label));
+                if !then_terminated {
+                    ir.push_str(&format!("  br label %end.{}\n", end_label));
+                }
 
-                if let Some(else_stmts) = else_branch {
-                    ir.push_str(&format!("else.{}:\n", else_label));
-                    for stmt in else_stmts {
+                // Generate else if branches
+                let mut current_label = first_alt_label;
+                for (i, else_if_branch) in else_if_branches.iter().enumerate() {
+                    if !else_if_branches.is_empty() {
+                        ir.push_str(&format!("elseif.{}:\n", current_label));
+                    }
+                    
+                    // Generate condition for this else if
+                    let else_if_cond_value = self.generate_expression(&else_if_branch.condition, ir);
+                    let else_if_bool_cond = {
+                        let bool_id = self.fresh_id();
+                        ir.push_str(&format!("  %{} = icmp ne i32 {}, 0\n", bool_id, else_if_cond_value));
+                        format!("%{}", bool_id)
+                    };
+                    
+                    let else_if_then_label = self.fresh_label();
+                    
+                    // Determine next alternative label
+                    let next_alt_label = if i + 1 < else_if_branches.len() {
+                        self.fresh_label()
+                    } else if else_branch.is_some() {
+                        self.fresh_label()
+                    } else {
+                        end_label
+                    };
+                    
+                    // Branch for this else if
+                    ir.push_str(&format!(
+                        "  br i1 {}, label %then.{}, label %{}{}{}",
+                        else_if_bool_cond,
+                        else_if_then_label,
+                        if i + 1 < else_if_branches.len() { "elseif." } else if else_branch.is_some() { "else." } else { "end." },
+                        next_alt_label,
+                        "\n"
+                    ));
+                    
+                    // Generate else if body
+                    ir.push_str(&format!("then.{}:\n", else_if_then_label));
+                    let mut else_if_terminated = false;
+                    for stmt in &else_if_branch.body {
+                        if matches!(stmt, Stmt::Return { .. }) {
+                            else_if_terminated = true;
+                        }
                         self.generate_function_statement(stmt, ir);
                     }
-                    ir.push_str(&format!("  br label %end.{}\n", end_label));
+                    if !else_if_terminated {
+                        ir.push_str(&format!("  br label %end.{}\n", end_label));
+                    }
+                    
+                    current_label = next_alt_label;
+                }
+
+                // Generate final else branch if present
+                if let Some(else_stmts) = else_branch {
+                    ir.push_str(&format!("else.{}:\n", current_label));
+                    let mut else_terminated = false;
+                    for stmt in else_stmts {
+                        if matches!(stmt, Stmt::Return { .. }) {
+                            else_terminated = true;
+                        }
+                        self.generate_function_statement(stmt, ir);
+                    }
+                    if !else_terminated {
+                        ir.push_str(&format!("  br label %end.{}\n", end_label));
+                    }
+                } else if else_if_branches.is_empty() {
+                    // No else if branches and no else - current_label is already end_label
                 } else {
-                    ir.push_str(&format!("else.{}:\n", else_label));
+                    // We have else if branches but no final else
+                    ir.push_str(&format!("end.{}:\n", current_label));
                     ir.push_str(&format!("  br label %end.{}\n", end_label));
                 }
 
@@ -350,9 +580,17 @@ impl CodeGenerator {
 
                 ir.push_str(&format!("cond.{}:\n", cond_label));
                 let cond_value = self.generate_expression(condition, ir);
+                
+                // Convert to i1 for branch condition
+                let bool_cond = {
+                    let bool_id = self.fresh_id();
+                    ir.push_str(&format!("  %{} = icmp ne i32 {}, 0\n", bool_id, cond_value));
+                    format!("%{}", bool_id)
+                };
+                
                 ir.push_str(&format!(
                     "  br i1 {}, label %body.{}, label %end.{}\n",
-                    cond_value, body_label, end_label
+                    bool_cond, body_label, end_label
                 ));
 
                 ir.push_str(&format!("body.{}:\n", body_label));
@@ -385,9 +623,17 @@ impl CodeGenerator {
                 ir.push_str(&format!("cond.{}:\n", cond_label));
                 if let Some(cond) = condition {
                     let cond_value = self.generate_expression(cond, ir);
+                    
+                    // Convert to i1 for branch condition
+                    let bool_cond = {
+                        let bool_id = self.fresh_id();
+                        ir.push_str(&format!("  %{} = icmp ne i32 {}, 0\n", bool_id, cond_value));
+                        format!("%{}", bool_id)
+                    };
+                    
                     ir.push_str(&format!(
                         "  br i1 {}, label %body.{}, label %end.{}\n",
-                        cond_value, body_label, end_label
+                        bool_cond, body_label, end_label
                     ));
                 } else {
                     ir.push_str(&format!("  br label %body.{}\n", body_label));
@@ -438,130 +684,212 @@ impl CodeGenerator {
 
     fn generate_expression(&mut self, expr: &Expr, ir: &mut String) -> String {
         match expr {
-            Expr::IntegerLiteral { value, .. } => value.to_string(),
-
-            Expr::FloatLiteral { value, .. } => {
-                format!("{:.1}", value)
+            Expr::IntegerLiteral { value, .. } => {
+                // Enhanced integer literal handling with validation
+                match value.parse::<i64>() {
+                    Ok(val) if val >= i32::MIN as i64 && val <= i32::MAX as i64 => {
+                        val.to_string()
+                    }
+                    Ok(val) => {
+                        eprintln!("Warning: Integer literal {} may overflow i32, truncating", val);
+                        (val as i32).to_string()
+                    }
+                    Err(_) => {
+                        eprintln!("Error: Invalid integer literal {}", value);
+                        "0".to_string()
+                    }
+                }
             }
 
-            Expr::BooleanLiteral { value, .. } => if *value { "1" } else { "0" }.to_string(),
+            Expr::FloatLiteral { value, .. } => {
+                // Enhanced float handling with precision control
+                if value.is_finite() {
+                    if value.fract() == 0.0 {
+                        format!("{:.1}", value)
+                    } else {
+                        format!("{:.6}", value)
+                    }
+                } else {
+                    eprintln!("Warning: Non-finite float value, using 0.0");
+                    "0.0".to_string()
+                }
+            }
+
+            Expr::BooleanLiteral { value, .. } => {
+                if *value { "1" } else { "0" }.to_string()
+            }
 
             Expr::CharLiteral { value, .. } => {
                 let ascii_value = *value as u8;
-                ascii_value.to_string()
-            },
+                // Validate ASCII range
+                if ascii_value <= 127 {
+                    ascii_value.to_string()
+                } else {
+                    eprintln!("Warning: Non-ASCII character, using 0");
+                    "0".to_string()
+                }
+            }
 
-            Expr::StringLiteral { value, .. } => self.generate_string_literal(value, ir),
+            Expr::StringLiteral { value, .. } => {
+                self.generate_string_literal(value, ir)
+            }
 
             Expr::InterpolatedString { parts, .. } => {
                 self.generate_interpolated_string(parts, ir)
-            },
+            }
 
             Expr::Identifier { name, .. } => {
+                // Enhanced identifier resolution with validation
                 if let Some(var_info) = self.variables.get(name).cloned() {
                     let (zen_type, _, alloc_id) = var_info;
                     let llvm_type = self.get_llvm_type(&zen_type);
                     let id = self.fresh_id();
                     
-                    // Handle string loading specially
-                    if zen_type == "str" {
-                        ir.push_str(&format!("  %{} = load i8*, i8** %{}\n", id, alloc_id));
-                    } else {
-                        ir.push_str(&format!(
-                            "  %{} = load {}, {}* %{}\n",
-                            id, llvm_type, llvm_type, alloc_id
-                        ));
+                    // Enhanced type-specific loading
+                    match zen_type.as_str() {
+                        "str" => {
+                            ir.push_str(&format!("  %{} = load i8*, i8** %{}\n", id, alloc_id));
+                        }
+                        "bool" => {
+                            ir.push_str(&format!("  %{} = load i1, i1* %{}\n", id, alloc_id));
+                        }
+                        "char" => {
+                            ir.push_str(&format!("  %{} = load i8, i8* %{}\n", id, alloc_id));
+                        }
+                        _ => {
+                            ir.push_str(&format!(
+                                "  %{} = load {}, {}* %{}\n",
+                                id, llvm_type, llvm_type, alloc_id
+                            ));
+                        }
                     }
                     format!("%{}", id)
                 } else {
+                    eprintln!("Error: Undefined variable '{}'", name);
                     format!("%{}", name)
                 }
             }
 
             Expr::BinaryOp { left, op, right } => {
-                let is_float = matches!(left.as_ref(), Expr::FloatLiteral { .. })
-                    || matches!(right.as_ref(), Expr::FloatLiteral { .. })
-                    || matches!(left.as_ref(), Expr::Identifier { name, .. } if self.variables.get(name).is_some_and(|(t, _, _)| t == "f64" || t == "f32"))
-                    || matches!(right.as_ref(), Expr::Identifier { name, .. } if self.variables.get(name).is_some_and(|(t, _, _)| t == "f64" || t == "f32"));
-
-                let is_bool = matches!(left.as_ref(), Expr::BooleanLiteral { .. })
-                    || matches!(right.as_ref(), Expr::BooleanLiteral { .. })
-                    || matches!(left.as_ref(), Expr::Identifier { name, .. } if self.variables.get(name).is_some_and(|(t, _, _)| t == "bool"))
-                    || matches!(right.as_ref(), Expr::Identifier { name, .. } if self.variables.get(name).is_some_and(|(t, _, _)| t == "bool"))
-                    || matches!(op.kind, TokenType::And | TokenType::Or);
-
+                let left_type = self.infer_expression_type(left);
+                let right_type = self.infer_expression_type(right);
+                
                 let left_val = self.generate_expression(left, ir);
                 let right_val = self.generate_expression(right, ir);
 
-                let id = self.fresh_id();
-                let (llvm_type, op_str) = if is_float {
-                    (
-                        "double",
-                        match op.kind {
-                            TokenType::Plus => "fadd",
-                            TokenType::Minus => "fsub",
-                            TokenType::Star => "fmul",
-                            TokenType::Slash => "fdiv",
-                            _ => "fadd",
-                        },
-                    )
-                } else if is_bool {
-                    (
-                        "i1",
-                        match op.kind {
-                            TokenType::And => "and",
-                            TokenType::Or => "or",
-                            _ => "and",
-                        },
-                    )
-                } else {
-                    (
-                        "i32",
-                        match op.kind {
-                            TokenType::Plus => "add",
-                            TokenType::Minus => "sub",
-                            TokenType::Star => "mul",
-                            TokenType::Slash => "sdiv",
-                            TokenType::EqualEqual => "icmp eq",
-                            TokenType::NotEqual => "icmp ne",
-                            TokenType::LessThan => "icmp slt",
-                            TokenType::LessEqual => "icmp sle",
-                            TokenType::GreaterThan => "icmp sgt",
-                            TokenType::GreaterEqual => "icmp sge",
-                            TokenType::And => "and",
-                            TokenType::Or => "or",
-                            _ => {
-                                eprintln!("Warning: Unknown operator {:?}, using add", op);
-                                "add"
+                // Handle comparison operations that return bool
+                let result = match op.kind {
+                    TokenType::EqualEqual | TokenType::NotEqual |
+                    TokenType::LessThan | TokenType::LessEqual |
+                    TokenType::GreaterThan | TokenType::GreaterEqual => {
+                        let op_str = if left_type == "f64" || right_type == "f64" {
+                            match op.kind {
+                                TokenType::EqualEqual => "fcmp oeq double",
+                                TokenType::NotEqual => "fcmp one double",
+                                TokenType::LessThan => "fcmp olt double",
+                                TokenType::LessEqual => "fcmp ole double",
+                                TokenType::GreaterThan => "fcmp ogt double",
+                                TokenType::GreaterEqual => "fcmp oge double",
+                                _ => "fcmp oeq double",
                             }
-                        },
-                    )
+                        } else {
+                            match op.kind {
+                                TokenType::EqualEqual => "icmp eq i32",
+                                TokenType::NotEqual => "icmp ne i32",
+                                TokenType::LessThan => "icmp slt i32",
+                                TokenType::LessEqual => "icmp sle i32",
+                                TokenType::GreaterThan => "icmp sgt i32",
+                                TokenType::GreaterEqual => "icmp sge i32",
+                                _ => "icmp eq i32",
+                            }
+                        };
+                        let id = self.fresh_id();
+                        ir.push_str(&format!("  %{} = {} {}, {}\n", id, op_str, left_val, right_val));
+                        
+                        // Convert i1 result to i32 for compatibility
+                        let conv_id = self.fresh_id();
+                        ir.push_str(&format!("  %{} = zext i1 %{} to i32\n", conv_id, id));
+                        format!("%{}", conv_id)
+                    }
+                    
+                    TokenType::And | TokenType::Or => {
+                        // For logical operations, work with i1 directly
+                        let left_bool_id = self.fresh_id();
+                        let right_bool_id = self.fresh_id();
+                        let result_id = self.fresh_id();
+                        let final_id = self.fresh_id();
+                        
+                        // Convert operands to i1
+                        ir.push_str(&format!("  %{} = icmp ne i32 {}, 0\n", left_bool_id, left_val));
+                        ir.push_str(&format!("  %{} = icmp ne i32 {}, 0\n", right_bool_id, right_val));
+                        
+                        let op_str = match op.kind {
+                            TokenType::And => "and i1",
+                            TokenType::Or => "or i1",
+                            _ => "and i1",
+                        };
+                        ir.push_str(&format!("  %{} = {} %{}, %{}\n", result_id, op_str, left_bool_id, right_bool_id));
+                        
+                        // Convert i1 result to i32 for compatibility
+                        ir.push_str(&format!("  %{} = zext i1 %{} to i32\n", final_id, result_id));
+                        format!("%{}", final_id)
+                    }
+                    
+                    _ => {
+                        // Arithmetic operations
+                        let id = self.fresh_id();
+                        let op_str = if left_type == "f64" || right_type == "f64" {
+                            match op.kind {
+                                TokenType::Plus => "fadd double",
+                                TokenType::Minus => "fsub double",
+                                TokenType::Star => "fmul double",
+                                TokenType::Slash => "fdiv double",
+                                TokenType::Percent => "frem double",
+                                _ => "fadd double",
+                            }
+                        } else {
+                            match op.kind {
+                                TokenType::Plus => "add i32",
+                                TokenType::Minus => "sub i32",
+                                TokenType::Star => "mul i32",
+                                TokenType::Slash => "sdiv i32",
+                                TokenType::Percent => "srem i32",
+                                _ => "add i32",
+                            }
+                        };
+                        ir.push_str(&format!("  %{} = {} {}, {}\n", id, op_str, left_val, right_val));
+                        format!("%{}", id)
+                    }
                 };
-
-                ir.push_str(&format!(
-                    "  %{} = {} {} {}, {}\n",
-                    id, op_str, llvm_type, left_val, right_val
-                ));
-                format!("%{}", id)
+                
+                result
             }
 
             Expr::UnaryOp { op, operand } => {
                 let operand_val = self.generate_expression(operand, ir);
-                let id = self.fresh_id();
 
                 match op.kind {
                     TokenType::Minus => {
+                        let id = self.fresh_id();
                         ir.push_str(&format!("  %{} = sub i32 0, {}\n", id, operand_val));
+                        format!("%{}", id)
                     }
                     TokenType::Not => {
-                        ir.push_str(&format!("  %{} = xor i1 {}, true\n", id, operand_val));
+                        // Convert i32 to i1 first, then negate, then back to i32
+                        let bool_id = self.fresh_id();
+                        let not_id = self.fresh_id();
+                        let final_id = self.fresh_id();
+                        ir.push_str(&format!("  %{} = icmp ne i32 {}, 0\n", bool_id, operand_val));
+                        ir.push_str(&format!("  %{} = xor i1 %{}, true\n", not_id, bool_id));
+                        ir.push_str(&format!("  %{} = zext i1 %{} to i32\n", final_id, not_id));
+                        format!("%{}", final_id)
                     }
                     _ => {
+                        let id = self.fresh_id();
                         ir.push_str(&format!("  %{} = sub i32 0, {}\n", id, operand_val));
+                        format!("%{}", id)
                     }
                 }
-
-                format!("%{}", id)
             }
 
             Expr::Call { callee, args, .. } => {
