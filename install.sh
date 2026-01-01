@@ -4,7 +4,7 @@
 # Zen Compiler - One-Click Installation Script
 # Version: 0.0.1
 # Description: Fully automated installation for Zen programming language
-# Usage: curl -sSL https://raw.githubusercontent.com/Lunar-Chipter/zen-lang/main/install.sh | bash
+# Usage: curl -sSL https://raw.githubusercontent.com/Luvion1/zen-lang/main/install.sh | bash
 ###############################################################################
 
 set -e
@@ -19,7 +19,7 @@ NC='\033[0m' # No Color
 
 # Version
 VERSION="0.0.1"
-REPO_URL="https://github.com/Lunar-Chipter/zen-lang.git"
+REPO_URL="https://github.com/Luvion1/zen-lang.git"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.zen}"
 BIN_DIR="$INSTALL_DIR/bin"
 RELEASE_BIN="$BIN_DIR/zen"
@@ -272,13 +272,13 @@ show_completion() {
     echo ""
 
     echo -e "${BLUE}Resources${NC}"
-    echo -e "  📖 Documentation: ${CYAN}https://github.com/Lunar-Chipter/zen-lang/tree/main/docs${NC}"
-    echo -e "  💡 Examples:      ${CYAN}https://github.com/Lunar-Chipter/zen-lang/tree/main/examples${NC}"
-    echo -e "  🐛 Issues:        ${CYAN}https://github.com/Lunar-Chipter/zen-lang/issues${NC}"
+    echo -e "  📖 Documentation: ${CYAN}https://github.com/Luvion1/zen-lang/tree/main/docs${NC}"
+    echo -e "  💡 Examples:      ${CYAN}https://github.com/Luvion1/zen-lang/tree/main/examples${NC}"
+    echo -e "  🐛 Issues:        ${CYAN}https://github.com/Luvion1/zen-lang/issues${NC}"
     echo ""
 
     echo -e "${BLUE}Installation Command${NC}"
-    echo -e "  ${YELLOW}curl -sSL https://raw.githubusercontent.com/Lunar-Chipter/zen-lang/main/install.sh | bash${NC}"
+    echo -e "  ${YELLOW}curl -sSL https://raw.githubusercontent.com/Luvion1/zen-lang/main/install.sh | bash${NC}"
     echo ""
 }
 
@@ -322,7 +322,7 @@ main() {
                 echo "  INSTALL_DIR=/opt/zen $0  # Custom directory"
                 echo ""
                 echo "Remote Installation:"
-                echo "  curl -sSL https://raw.githubusercontent.com/Lunar-Chipter/zen-lang/main/install.sh | bash"
+                echo "  curl -sSL https://raw.githubusercontent.com/Luvion1/zen-lang/main/install.sh | bash"
                 exit 0
                 ;;
             INSTALL_DIR=*)
