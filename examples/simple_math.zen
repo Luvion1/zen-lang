@@ -7,3 +7,11 @@ fn add(a: i32, b: i32) -> i32 {
 fn multiply(x: i32, y: i32) -> i32 {
     return x * y
 }
+
+fn main() -> i32 {
+    let sum = add(5, 3)
+    let product = multiply(4, 2)
+    println(sum)
+    println(product)
+    return 0
+}
