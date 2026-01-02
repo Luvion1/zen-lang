@@ -243,7 +243,7 @@ The Zen compiler follows a traditional multi-pass architecture with clear separa
 | **Code Generator** | ✅ Complete | - | LLVM IR generation (all basic features) |
 | **String Interpolation** | ✅ Complete | - | Variable and expression interpolation |
 | **For Loops** | ✅ Complete | - | C-style for loops with initialization |
-| **Ownership Checker** | ⏳ Planned | - | Memory safety enforcement (v0.1.0+) |
+| **Ownership Checker** | ✅ Complete | - | Memory safety enforcement (v0.1.0+) |
 | **Standard Library** | ⏳ Planned | - | I/O, collections, core types (v0.2.0+) |
 
 ---
@@ -296,7 +296,7 @@ zen --help
 
 **Statistics**
 - ~3,500 lines of Rust code
-- 23/23 tests passing
+- 36/36 tests passing
 - Supports: Linux, macOS (Intel x86_64), Windows
 
 ### Roadmap
