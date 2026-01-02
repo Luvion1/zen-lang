@@ -24,3 +24,16 @@ pub struct Point {
 pub fn create_point(x: i32, y: i32) -> Point {
     return Point { x: x, y: y }
 }
+
+fn main() -> i32 {
+    // Test utility functions
+    let sum = add(15, 25)
+    let product = multiply(4, 7)
+    let fact = factorial(5)
+    
+    println("Sum: {sum}")
+    println("Product: {product}")
+    println("Factorial of 5: {fact}")
+    
+    return 0
+}

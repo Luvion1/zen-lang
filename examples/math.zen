@@ -18,3 +18,14 @@ pub struct Point {
     x: i32,
     y: i32
 }
+
+fn main() -> i32 {
+    // Test the math functions
+    let result = add(10, 20)
+    let product = multiply(5, 6)
+    
+    println("Add result: {result}")
+    println("Multiply result: {product}")
+    
+    return 0
+}
