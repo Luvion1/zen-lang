@@ -6,98 +6,162 @@ This directory contains comprehensive examples showcasing Zen's features and cap
 
 ### 1. **hello.zen** - Hello World
 The classic first program in any language.
-```bash
-zen run examples/hello.zen
-```
 
 ### 2. **variables.zen** - Variables and Type Inference
 Demonstrates variable declarations, type inference, and mutability.
-- Type inference from literals
-- Explicit type annotations
-- Mutable variables
-- All primitive types (i32, f64, bool, str, char)
 
 ### 3. **arithmetic.zen** - Basic Arithmetic
 Simple mathematical operations and expressions.
 
-## Intermediate Examples
+### 4. **simple_int.zen** - Simple Integer Operations
+Basic integer variable handling.
 
-### 4. **functions_advanced.zen** - Advanced Functions
-Comprehensive function examples including:
-- Function parameters and return types
-- Nested function calls
-- Recursive functions (factorial)
-- Void functions
-- Complex expressions with function calls
+### 5. **simple_test.zen** - Simple Test Program
+Basic program structure testing.
 
-### 5. **control_flow_advanced.zen** - Control Flow
-All control flow structures:
-- If-else statements
-- While loops
-- C-style for loops with initialization
-- Match expressions with multiple patterns
+## Type System Examples
 
-### 6. **math_operations.zen** - Mathematical Operations
-Complete mathematical operations showcase:
-- Integer and float arithmetic
-- Comparison operations
-- Boolean logic operations
-- Mixed-type expressions
+### 6. **basic_type_test.zen** - Basic Type Testing
+Tests for fundamental type system features.
 
-### 7. **strings_chars.zen** - String and Character Handling
-String and character operations:
-- String variables and assignment
-- Character literals
-- String type inference
-- Multiple string manipulations
+### 7. **typechecker_simple.zen** - Simple Type Checking
+Basic type checker functionality.
 
-### 8. **string_interpolation.zen** - String Interpolation
-Modern string formatting with variable embedding:
-- Variable interpolation: `"Hello, {name}!"`
-- Expression interpolation: `"Sum: {add(x, y)}"`
-- Mixed text and variables
-- Function calls in strings
+### 8. **typechecker_test.zen** - Advanced Type Checking
+Comprehensive type checking tests.
 
-## Advanced Examples
+### 9. **alias_test.zen** - Type Aliases
+Type alias functionality and usage.
 
-### 9. **complex_expressions.zen** - Complex Expressions
-Advanced expression handling:
-- Nested arithmetic expressions
-- Complex function call chains
-- Boolean expression combinations
-- Function calls in conditions
+### 10. **array_test.zen** - Array Operations
+Array type handling and operations.
 
-### 11. **algorithms.zen** - Algorithms and Data Processing
-Real-world algorithms implementation:
-- Fibonacci sequence (recursive)
-- Greatest Common Divisor (Euclidean algorithm)
-- Prime number checking
-- Range summation
-- Factorial with loops
+## Function Examples
 
-### 12. **pattern_matching.zen** - Pattern Matching
-Advanced pattern matching and conditional logic:
-- Match expressions with multiple cases
-- Conditional grading system
-- Day-of-week matching
-- Complex boolean conditions
+### 11. **functions.zen** - Basic Functions
+Function declarations and calls.
 
-## Application Examples
+### 12. **functions_advanced.zen** - Advanced Functions
+Complex function examples with parameters and returns.
 
-### 13. **guessing_game.zen** - Number Guessing Game
-Interactive game simulation demonstrating:
-- Game logic implementation
-- Distance calculation
-- Feedback system
-- Multiple function interactions
+### 13. **nested_calls.zen** - Nested Function Calls
+Functions calling other functions.
 
-### 14. **calculator.zen** - Scientific Calculator
-Full-featured calculator with:
-- Basic arithmetic operations (+, -, *, /)
-- Power calculations
-- Error handling (division by zero)
-- Complex mathematical expressions
-- Float number operations
+## Control Flow Examples
+
+### 14. **control_flow.zen** - Basic Control Flow
+If-else statements and basic loops.
+
+### 15. **control_flow_advanced.zen** - Advanced Control Flow
+Complex control structures and patterns.
+
+### 16. **pattern_matching.zen** - Pattern Matching
+Match expressions and pattern-based logic.
+
+## Mathematical Examples
+
+### 17. **math_operations.zen** - Mathematical Operations
+Comprehensive math operations.
+
+### 18. **math.zen** - Math Utilities
+Mathematical utility functions.
+
+### 19. **simple_math.zen** - Simple Math
+Basic mathematical calculations.
+
+### 20. **float_ops.zen** - Float Operations
+Floating-point number operations.
+
+### 21. **algorithms.zen** - Algorithms
+Real-world algorithm implementations.
+
+### 22. **calculator.zen** - Calculator
+Full-featured calculator implementation.
+
+## String Examples
+
+### 23. **strings.zen** - String Operations
+Basic string handling.
+
+### 24. **strings_chars.zen** - Strings and Characters
+String and character manipulation.
+
+### 25. **string_interpolation.zen** - String Interpolation
+Modern string formatting with variables.
+
+### 26. **multiline.zen** - Multiline Strings
+Multiline string handling.
+
+## Struct Examples
+
+### 27. **simple_struct.zen** - Simple Structs
+Basic struct definitions and usage.
+
+### 28. **simple_struct_test.zen** - Simple Struct Testing
+Testing struct functionality.
+
+### 29. **struct_test.zen** - Struct Testing
+Comprehensive struct tests.
+
+### 30. **advanced_struct_test.zen** - Advanced Struct Testing
+Advanced struct features and testing.
+
+### 31. **simple_field_test.zen** - Field Access Testing
+Testing struct field access.
+
+### 32. **test_struct_codegen.zen** - Struct Code Generation
+Testing struct code generation.
+
+## Import/Module Examples
+
+### 33. **import_demo.zen** - Import Demonstration
+Basic import functionality.
+
+### 34. **simple_import_demo.zen** - Simple Import Demo
+Simple import examples.
+
+### 35. **comprehensive_import_demo.zen** - Comprehensive Import Demo
+Complete import system demonstration.
+
+### 36. **final_import_demo.zen** - Final Import Demo
+Advanced import patterns.
+
+### 37. **module_access_test.zen** - Module Access Testing
+Testing module access patterns.
+
+### 38. **specific_import_test.zen** - Specific Import Testing
+Testing specific import functionality.
+
+### 39. **wildcard_test.zen** - Wildcard Import Testing
+Testing wildcard import patterns.
+
+### 40. **utils.zen** - Utility Functions
+Utility function library.
+
+## Ownership Examples
+
+### 41. **ownership_basic.zen** - Basic Ownership
+Fundamental ownership concepts.
+
+### 42. **ownership_error.zen** - Ownership Errors
+Common ownership error patterns.
+
+### 43. **ownership_scopes.zen** - Ownership Scopes
+Ownership behavior across scopes.
+
+### 44. **borrowing_immutable.zen** - Immutable Borrowing
+Immutable reference patterns.
+
+### 45. **borrowing_mutable.zen** - Mutable Borrowing
+Mutable reference patterns.
+
+## Complex Examples
+
+### 46. **complex_expressions.zen** - Complex Expressions
+Advanced expression handling.
+
+### 47. **guessing_game.zen** - Guessing Game
+Interactive game implementation.
 
 ## Running Examples
 
@@ -112,11 +176,14 @@ zen compile examples/<filename>.zen
 
 ## Features Demonstrated
 
-- ✅ **Type System**: Inference, explicit types, primitives
+- ✅ **Type System**: Inference, explicit types, primitives, arrays, structs
 - ✅ **Functions**: Parameters, returns, recursion, nesting
 - ✅ **Control Flow**: If/else, loops, match expressions
 - ✅ **Variables**: Immutable/mutable, all types
 - ✅ **Expressions**: Complex nested expressions
+- ✅ **Ownership**: Move semantics, borrowing, scopes
+- ✅ **Structs**: Definitions, fields, methods
+- ✅ **Imports**: Module system, wildcards, aliases
 - ✅ **Algorithms**: Real-world problem solving
 - ✅ **Applications**: Complete programs
 
@@ -130,9 +197,4 @@ All examples compile to native machine code via LLVM, providing:
 
 ## Next Steps
 
-These examples showcase Zen v0.0.1 capabilities. Future versions will add:
-- Structs and methods
-- Arrays and collections
-- Error handling
-- Standard library functions
-- Ownership system improvements
+These examples showcase Zen v0.0.1+ capabilities including the new ownership system, structs, and import functionality.
