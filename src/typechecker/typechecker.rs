@@ -3,6 +3,7 @@ use crate::ast::stmt::Stmt;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct TypeInfo {
     name: String,
     is_mutable: bool,
@@ -11,6 +12,7 @@ struct TypeInfo {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct FunctionInfo {
     params: Vec<(String, String)>,
     return_type: String,

@@ -156,6 +156,16 @@ impl OwnershipChecker {
                 }
                 self.exit_scope();
             }
+
+            Stmt::ExprStmt { expr } => {
+                self.check_expression(expr)?;
+            }
+
+            Stmt::Return { value, .. } => {
+                if let Some(expr) = value {
+                    self.check_expression(expr)?;
+                }
+            }
             
             _ => {}
         }

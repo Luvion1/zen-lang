@@ -226,6 +226,7 @@ impl CodeGenerator {
         }
     }
 
+    #[allow(dead_code)]
     fn handle_type_coercion(
         &mut self,
         left_val: String,
@@ -279,6 +280,7 @@ impl CodeGenerator {
         (final_left, final_right, op_type)
     }
 
+    #[allow(dead_code)]
     fn is_compatible_type(&self, target_type: &str, source_type: &str) -> bool {
         // Enhanced type compatibility checking
         match (target_type, source_type) {

@@ -1,6 +1,6 @@
-use crate::ownership::*;
 use crate::lexer::lexer::Lexer;
 use crate::parser::parser::Parser;
+use crate::ownership::OwnershipChecker;
 
 #[cfg(test)]
 mod tests {
