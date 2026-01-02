@@ -580,10 +580,14 @@ impl CodeGenerator {
                 ..
             } => {
                 let cond_value = self.generate_expression(condition, ir);
+                let cond_type = self.infer_expression_type(condition);
                 
-                // Convert i32 to i1 for branch condition
-                let bool_cond = if self.infer_expression_type(condition) == "bool" {
-                    // If it's already a comparison result (i32 from our conversion), convert back to i1
+                // Convert to i1 for branch condition
+                let bool_cond = if cond_type == "bool" && cond_value.starts_with('%') {
+                    // Already i1, use directly
+                    cond_value
+                } else if cond_type == "bool" {
+                    // Boolean literal, convert to i1
                     let bool_id = self.fresh_id();
                     ir.push_str(&format!("  %{} = icmp ne i32 {}, 0\n", bool_id, cond_value));
                     format!("%{}", bool_id)
@@ -638,7 +642,11 @@ impl CodeGenerator {
                     
                     // Generate condition for this else if
                     let else_if_cond_value = self.generate_expression(&else_if_branch.condition, ir);
-                    let else_if_bool_cond = {
+                    let else_if_cond_type = self.infer_expression_type(&else_if_branch.condition);
+                    let else_if_bool_cond = if else_if_cond_type == "bool" && else_if_cond_value.starts_with('%') {
+                        // Already i1, use directly
+                        else_if_cond_value
+                    } else {
                         let bool_id = self.fresh_id();
                         ir.push_str(&format!("  %{} = icmp ne i32 {}, 0\n", bool_id, else_if_cond_value));
                         format!("%{}", bool_id)
@@ -716,9 +724,13 @@ impl CodeGenerator {
 
                 ir.push_str(&format!("cond.{}:\n", cond_label));
                 let cond_value = self.generate_expression(condition, ir);
+                let cond_type = self.infer_expression_type(condition);
                 
                 // Convert to i1 for branch condition
-                let bool_cond = {
+                let bool_cond = if cond_type == "bool" && cond_value.starts_with('%') {
+                    // Already i1, use directly
+                    cond_value
+                } else {
                     let bool_id = self.fresh_id();
                     ir.push_str(&format!("  %{} = icmp ne i32 {}, 0\n", bool_id, cond_value));
                     format!("%{}", bool_id)
@@ -759,9 +771,13 @@ impl CodeGenerator {
                 ir.push_str(&format!("cond.{}:\n", cond_label));
                 if let Some(cond) = condition {
                     let cond_value = self.generate_expression(cond, ir);
+                    let cond_type = self.infer_expression_type(cond);
                     
                     // Convert to i1 for branch condition
-                    let bool_cond = {
+                    let bool_cond = if cond_type == "bool" && cond_value.starts_with('%') {
+                        // Already i1, use directly
+                        cond_value
+                    } else {
                         let bool_id = self.fresh_id();
                         ir.push_str(&format!("  %{} = icmp ne i32 {}, 0\n", bool_id, cond_value));
                         format!("%{}", bool_id)
@@ -942,10 +958,8 @@ impl CodeGenerator {
                         let id = self.fresh_id();
                         ir.push_str(&format!("  %{} = {} {}, {}\n", id, op_str, left_val, right_val));
                         
-                        // Convert i1 result to i32 for compatibility
-                        let conv_id = self.fresh_id();
-                        ir.push_str(&format!("  %{} = zext i1 %{} to i32\n", conv_id, id));
-                        format!("%{}", conv_id)
+                        // Return i1 result directly - don't convert to i32 unless needed
+                        format!("%{}", id)
                     }
                     
                     TokenType::And | TokenType::Or => {
