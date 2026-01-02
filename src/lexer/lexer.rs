@@ -34,7 +34,7 @@ impl<'a> Lexer<'a> {
             self.start_line = self.line;
             self.start_column = self.column;
             self.current_lexeme.clear();
-            
+
             match self.next_token() {
                 Some(token) => {
                     // Validate token before adding
@@ -47,7 +47,7 @@ impl<'a> Lexer<'a> {
         }
 
         tokens.push(Token::eof(self.line, self.column));
-        
+
         // Report any lexical errors
         if !self.errors.is_empty() {
             eprintln!("Lexical warnings/errors:");
@@ -55,7 +55,7 @@ impl<'a> Lexer<'a> {
                 eprintln!("  {}", error);
             }
         }
-        
+
         tokens
     }
 
@@ -81,7 +81,7 @@ impl<'a> Lexer<'a> {
                     }
                 }
             }
-            
+
             TokenType::FloatLiteral => {
                 // Enhanced float validation
                 match token.lexeme.parse::<f64>() {
@@ -102,21 +102,27 @@ impl<'a> Lexer<'a> {
                     }
                 }
             }
-            
+
             TokenType::Identifier => {
                 // Enhanced identifier validation
                 if token.lexeme.is_empty() {
-                    self.report_error(format!("Empty identifier at {}:{}", token.line, token.column));
+                    self.report_error(format!(
+                        "Empty identifier at {}:{}",
+                        token.line, token.column
+                    ));
                     return false;
                 }
-                
+
                 if token.lexeme.len() > 255 {
                     self.report_warning(format!(
                         "Identifier '{}' is very long ({} chars) at {}:{}",
-                        token.lexeme, token.lexeme.len(), token.line, token.column
+                        token.lexeme,
+                        token.lexeme.len(),
+                        token.line,
+                        token.column
                     ));
                 }
-                
+
                 // Check for reserved words that might be missed
                 if self.is_reserved_word(&token.lexeme) {
                     self.report_warning(format!(
@@ -124,21 +130,23 @@ impl<'a> Lexer<'a> {
                         token.lexeme, token.line, token.column
                     ));
                 }
-                
+
                 true
             }
-            
+
             TokenType::StringLiteral => {
                 // Enhanced string validation
                 if token.lexeme.len() > 1000 {
                     self.report_warning(format!(
                         "String literal is very long ({} chars) at {}:{}",
-                        token.lexeme.len(), token.line, token.column
+                        token.lexeme.len(),
+                        token.line,
+                        token.column
                     ));
                 }
                 true
             }
-            
+
             _ => true,
         }
     }
@@ -152,9 +160,22 @@ impl<'a> Lexer<'a> {
     }
 
     fn is_reserved_word(&self, word: &str) -> bool {
-        matches!(word, 
-            "abstract" | "async" | "await" | "become" | "box" | "do" | "final" | 
-            "macro" | "override" | "priv" | "typeof" | "unsized" | "virtual" | "yield"
+        matches!(
+            word,
+            "abstract"
+                | "async"
+                | "await"
+                | "become"
+                | "box"
+                | "do"
+                | "final"
+                | "macro"
+                | "override"
+                | "priv"
+                | "typeof"
+                | "unsized"
+                | "virtual"
+                | "yield"
         )
     }
 
@@ -519,7 +540,7 @@ impl<'a> Lexer<'a> {
 
     fn match_keyword(&mut self, keyword: &str) -> bool {
         let current_pos = self.input.clone();
-        
+
         for expected in keyword.chars() {
             if self.peek() != Some(expected) {
                 self.input = current_pos;
@@ -527,7 +548,7 @@ impl<'a> Lexer<'a> {
             }
             self.advance();
         }
-        
+
         true
     }
 

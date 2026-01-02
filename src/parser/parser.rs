@@ -14,8 +14,8 @@ pub struct Parser {
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
-        Parser { 
-            tokens, 
+        Parser {
+            tokens,
             current: 0,
             errors: Vec::new(),
             panic_mode: false,
@@ -42,9 +42,11 @@ impl Parser {
         }
 
         if self.had_error {
-            let error_summary = format!("Parsing failed with {} errors:\n{}", 
-                                      self.errors.len(), 
-                                      self.errors.join("\n"));
+            let error_summary = format!(
+                "Parsing failed with {} errors:\n{}",
+                self.errors.len(),
+                self.errors.join("\n")
+            );
             Err(error_summary)
         } else {
             Ok(program)
@@ -55,32 +57,35 @@ impl Parser {
         if self.panic_mode {
             return;
         }
-        
+
         self.panic_mode = true;
         self.had_error = true;
-        
+
         let current_token = self.peek();
-        let error_msg = format!("Error at line {}, column {}: {} (token: {:?})", 
-                               current_token.line, 
-                               current_token.column, 
-                               message,
-                               current_token.kind);
-        
+        let error_msg = format!(
+            "Error at line {}, column {}: {} (token: {:?})",
+            current_token.line, current_token.column, message, current_token.kind
+        );
+
         self.errors.push(error_msg);
         eprintln!("Parse error: {}", message);
     }
 
     fn synchronize(&mut self) {
         self.panic_mode = false;
-        
+
         while !self.is_at_end() {
             if self.previous().kind == TokenType::Semicolon {
                 return;
             }
 
             match self.peek().kind {
-                TokenType::Fn | TokenType::Let | TokenType::If | 
-                TokenType::While | TokenType::For | TokenType::Return => return,
+                TokenType::Fn
+                | TokenType::Let
+                | TokenType::If
+                | TokenType::While
+                | TokenType::For
+                | TokenType::Return => return,
                 _ => {}
             }
 
@@ -112,14 +117,15 @@ impl Parser {
             }
             return Ok(Some(self.variable_declaration()?));
         }
-        
+
         if is_public {
             return Err("Expected function, struct, or const after 'pub'".to_string());
         }
-        
+
         self.statement().map(Some)
     }
 
+    #[allow(dead_code)]
     fn function_declaration(&mut self) -> Result<Stmt, String> {
         self.function_declaration_with_visibility(false)
     }
@@ -147,6 +153,7 @@ impl Parser {
         })
     }
 
+    #[allow(dead_code)]
     fn struct_declaration(&mut self) -> Result<Stmt, String> {
         self.struct_declaration_with_visibility(false)
     }
@@ -184,17 +191,17 @@ impl Parser {
     fn const_declaration_with_visibility(&mut self, is_public: bool) -> Result<Stmt, String> {
         self.consume(TokenType::Const, "Expected 'const' keyword")?;
         let name = self.consume_identifier()?;
-        
+
         let type_annotation = if self.check(TokenType::Colon) {
             self.advance(); // consume ':'
             Some(self.parse_type_name()?)
         } else {
             None
         };
-        
+
         self.consume(TokenType::Equal, "Expected '=' after const name")?;
         let initializer = self.expression()?;
-        
+
         Ok(Stmt::ConstDecl {
             name,
             type_annotation,
@@ -276,15 +283,21 @@ impl Parser {
 
         // Handle built-in types
         match token.kind {
-            TokenType::Int8 | TokenType::Int16 | TokenType::Int32 | TokenType::Int64 |
-            TokenType::UInt8 | TokenType::UInt16 | TokenType::UInt32 | TokenType::UInt64 |
-            TokenType::Float32 | TokenType::Float64 | TokenType::Bool |
-            TokenType::Str | TokenType::Char | TokenType::Void => {
-                Ok(token.lexeme.clone())
-            }
-            TokenType::Identifier => {
-                Ok(token.lexeme.clone())
-            }
+            TokenType::Int8
+            | TokenType::Int16
+            | TokenType::Int32
+            | TokenType::Int64
+            | TokenType::UInt8
+            | TokenType::UInt16
+            | TokenType::UInt32
+            | TokenType::UInt64
+            | TokenType::Float32
+            | TokenType::Float64
+            | TokenType::Bool
+            | TokenType::Str
+            | TokenType::Char
+            | TokenType::Void => Ok(token.lexeme.clone()),
+            TokenType::Identifier => Ok(token.lexeme.clone()),
             _ => Err(format!("Expected type name, found {:?}", token.kind)),
         }
     }
@@ -359,24 +372,24 @@ impl Parser {
         self.consume(TokenType::If, "Expected 'if' keyword")?;
         let condition = self.expression()?;
         let then_branch = self.block()?;
-        
+
         // Parse all else if branches
         let mut else_if_branches = Vec::new();
-        
+
         while self.check(TokenType::Else) && self.check_ahead(1, TokenType::If) {
             self.advance(); // consume 'else'
             let else_if_token = self.peek().clone();
             self.consume(TokenType::If, "Expected 'if' after 'else'")?;
             let else_if_condition = self.expression()?;
             let else_if_body = self.block()?;
-            
+
             else_if_branches.push(crate::ast::stmt::ElseIfBranch {
                 condition: else_if_condition,
                 body: else_if_body,
                 token: else_if_token,
             });
         }
-        
+
         // Parse final else branch if present
         let else_branch = if self.match_token(TokenType::Else) {
             Some(self.block()?)
@@ -789,7 +802,10 @@ impl Parser {
             if self.check(TokenType::LeftBrace) && self.is_struct_literal_context() {
                 self.advance(); // consume '{'
                 let fields = self.struct_literal_fields()?;
-                self.consume(TokenType::RightBrace, "Expected '}' after struct literal fields")?;
+                self.consume(
+                    TokenType::RightBrace,
+                    "Expected '}' after struct literal fields",
+                )?;
                 return Ok(Expr::StructLiteral {
                     struct_name: name,
                     fields,
@@ -797,10 +813,7 @@ impl Parser {
                 });
             }
 
-            return Ok(Expr::Identifier {
-                name,
-                token,
-            });
+            return Ok(Expr::Identifier { name, token });
         }
 
         Err(format!("Unexpected token: {:?}", self.peek()))
@@ -810,9 +823,9 @@ impl Parser {
         // Look ahead to see if this looks like a struct literal
         // Struct literal: { field: value, ... } or { }
         let lookahead = 1;
-        
+
         // Skip whitespace/comments if any (simplified check)
-        while lookahead < self.tokens.len() - self.current {
+        if lookahead < self.tokens.len() - self.current {
             let token = &self.tokens[self.current + lookahead];
             match token.kind {
                 TokenType::RightBrace => return true, // Empty struct literal
@@ -874,16 +887,13 @@ impl Parser {
                 return None; // Invalid string literal
             }
             let value = token.lexeme[1..token.lexeme.len() - 1].to_string();
-            
+
             // Check if string contains interpolation
             if value.contains('{') && value.contains('}') {
                 let parts = self.parse_interpolated_string(&value);
-                return Some(Expr::InterpolatedString { 
-                    parts, 
-                    token 
-                });
+                return Some(Expr::InterpolatedString { parts, token });
             }
-            
+
             return Some(Expr::StringLiteral { value, token });
         }
         None
@@ -892,7 +902,10 @@ impl Parser {
     fn match_char(&mut self) -> Option<Expr> {
         if self.check(TokenType::CharLiteral) {
             let token = self.advance();
-            if token.lexeme.len() != 3 || !token.lexeme.starts_with('\'') || !token.lexeme.ends_with('\'') {
+            if token.lexeme.len() != 3
+                || !token.lexeme.starts_with('\'')
+                || !token.lexeme.ends_with('\'')
+            {
                 return None; // Invalid char literal format
             }
             let value = token.lexeme.chars().nth(1).unwrap_or('\0');
@@ -905,7 +918,7 @@ impl Parser {
         let mut parts = Vec::new();
         let mut current = String::new();
         let mut chars = value.chars().peekable();
-        
+
         while let Some(ch) = chars.next() {
             if ch == '{' {
                 // Save any text before the variable
@@ -913,7 +926,7 @@ impl Parser {
                     parts.push(crate::ast::expr::StringPart::Text(current.clone()));
                     current.clear();
                 }
-                
+
                 // Extract variable name or expression
                 let mut expr_content = String::new();
                 while let Some(&next_ch) = chars.peek() {
@@ -923,7 +936,7 @@ impl Parser {
                     }
                     expr_content.push(chars.next().unwrap());
                 }
-                
+
                 if !expr_content.is_empty() {
                     // Check if it's a function call (contains parentheses)
                     if expr_content.contains('(') && expr_content.contains(')') {
@@ -936,12 +949,12 @@ impl Parser {
                 current.push(ch);
             }
         }
-        
+
         // Add remaining text
         if !current.is_empty() {
             parts.push(crate::ast::expr::StringPart::Text(current));
         }
-        
+
         parts
     }
 
@@ -957,18 +970,13 @@ impl Parser {
             self.advance();
             return Ok(());
         }
-        
+
         let current = self.peek();
         let detailed_error = format!(
             "{} at line {}, column {}. Expected {:?}, but found {:?} '{}'",
-            message, 
-            current.line, 
-            current.column,
-            token_type,
-            current.kind,
-            current.lexeme
+            message, current.line, current.column, token_type, current.kind, current.lexeme
         );
-        
+
         // Enhanced error context
         let context = self.get_error_context();
         let full_error = if !context.is_empty() {
@@ -976,24 +984,26 @@ impl Parser {
         } else {
             detailed_error
         };
-        
+
         Err(full_error)
     }
 
     fn get_error_context(&self) -> String {
         // Provide context around the error location
         let mut context = String::new();
-        let start = if self.current >= 2 { self.current - 2 } else { 0 };
+        let start = self.current.saturating_sub(2);
         let end = std::cmp::min(self.current + 3, self.tokens.len());
-        
+
         for i in start..end {
             if i < self.tokens.len() {
                 let marker = if i == self.current { " >>> " } else { "     " };
-                context.push_str(&format!("{}Token {}: {:?} '{}'\n", 
-                                        marker, i, self.tokens[i].kind, self.tokens[i].lexeme));
+                context.push_str(&format!(
+                    "{}Token {}: {:?} '{}'\n",
+                    marker, i, self.tokens[i].kind, self.tokens[i].lexeme
+                ));
             }
         }
-        
+
         context
     }
 
@@ -1045,14 +1055,21 @@ impl Parser {
 
         // Parse path like: crate::module::item or module::*
         loop {
-            if self.check(TokenType::Identifier) || self.check(TokenType::Crate) || self.check(TokenType::Super) || self.check(TokenType::Self_) {
+            if self.check(TokenType::Identifier)
+                || self.check(TokenType::Crate)
+                || self.check(TokenType::Super)
+                || self.check(TokenType::Self_)
+            {
                 path.push(self.advance().lexeme);
             } else if self.check(TokenType::Star) {
                 // Handle wildcard import: use module::*;
                 path.push(self.advance().lexeme);
                 break;
             } else {
-                return Err(format!("Expected identifier or '*' in use path, got {:?}", self.peek()));
+                return Err(format!(
+                    "Expected identifier or '*' in use path, got {:?}",
+                    self.peek()
+                ));
             }
 
             if !self.match_token(TokenType::DoubleColon) {
@@ -1287,10 +1304,17 @@ fn main() -> i32 {
 
         let program = result.expect("Failed to parse else if");
         assert_eq!(program.statements.len(), 1);
-        
+
         if let Stmt::FunctionDecl { body, .. } = &program.statements[0] {
-            if let Stmt::If { else_if_branches, .. } = &body[1] {
-                assert_eq!(else_if_branches.len(), 1, "Should have exactly one else if branch");
+            if let Stmt::If {
+                else_if_branches, ..
+            } = &body[1]
+            {
+                assert_eq!(
+                    else_if_branches.len(),
+                    1,
+                    "Should have exactly one else if branch"
+                );
             } else {
                 panic!("Expected If statement");
             }
@@ -1326,10 +1350,19 @@ fn main() -> i32 {
 
         let program = result.expect("Failed to parse multiple else if");
         assert_eq!(program.statements.len(), 1);
-        
+
         if let Stmt::FunctionDecl { body, .. } = &program.statements[0] {
-            if let Stmt::If { else_if_branches, else_branch, .. } = &body[1] {
-                assert_eq!(else_if_branches.len(), 3, "Should have exactly three else if branches");
+            if let Stmt::If {
+                else_if_branches,
+                else_branch,
+                ..
+            } = &body[1]
+            {
+                assert_eq!(
+                    else_if_branches.len(),
+                    3,
+                    "Should have exactly three else if branches"
+                );
                 assert!(else_branch.is_some(), "Should have final else branch");
             } else {
                 panic!("Expected If statement");
@@ -1358,14 +1391,26 @@ fn main() -> i32 {
         let mut parser = Parser::new(lexer.tokenize());
 
         let result = parser.parse();
-        assert!(result.is_ok(), "Parsing else if without final else should succeed");
+        assert!(
+            result.is_ok(),
+            "Parsing else if without final else should succeed"
+        );
 
         let program = result.expect("Failed to parse else if without final else");
         assert_eq!(program.statements.len(), 1);
-        
+
         if let Stmt::FunctionDecl { body, .. } = &program.statements[0] {
-            if let Stmt::If { else_if_branches, else_branch, .. } = &body[1] {
-                assert_eq!(else_if_branches.len(), 2, "Should have exactly two else if branches");
+            if let Stmt::If {
+                else_if_branches,
+                else_branch,
+                ..
+            } = &body[1]
+            {
+                assert_eq!(
+                    else_if_branches.len(),
+                    2,
+                    "Should have exactly two else if branches"
+                );
                 assert!(else_branch.is_none(), "Should not have final else branch");
             } else {
                 panic!("Expected If statement");

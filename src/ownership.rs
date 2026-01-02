@@ -68,36 +68,49 @@ impl OwnershipChecker {
 
     fn check_statement(&mut self, stmt: &Stmt) -> Result<(), String> {
         match stmt {
-            Stmt::VariableDecl { name, initializer, is_mutable, token: _, .. } => {
+            Stmt::VariableDecl {
+                name,
+                initializer,
+                is_mutable,
+                token: _,
+                ..
+            } => {
                 if let Some(init) = initializer {
                     self.check_expression(init)?;
                 }
-                
-                self.variables.insert(name.clone(), OwnershipInfo {
-                    owner: name.clone(),
-                    is_moved: false,
-                    move_location: None,
-                    borrows: Vec::new(),
-                    scope_level: self.scope_level,
-                    is_mutable: *is_mutable,
-                });
+
+                self.variables.insert(
+                    name.clone(),
+                    OwnershipInfo {
+                        owner: name.clone(),
+                        is_moved: false,
+                        move_location: None,
+                        borrows: Vec::new(),
+                        scope_level: self.scope_level,
+                        is_mutable: *is_mutable,
+                    },
+                );
             }
-            
-            Stmt::Assignment { target, value, token } => {
+
+            Stmt::Assignment {
+                target,
+                value,
+                token,
+            } => {
                 self.check_expression(value)?;
-                
+
                 if let Expr::Identifier { name, .. } = target {
                     if let Some(info) = self.variables.get(name) {
                         if info.is_moved {
                             self.errors.push(format!(
-                                "Cannot assign to moved variable '{}' at {}:{}", 
+                                "Cannot assign to moved variable '{}' at {}:{}",
                                 name, token.line, token.column
                             ));
                         }
-                        
+
                         if !info.borrows.is_empty() {
                             self.errors.push(format!(
-                                "Cannot assign to borrowed variable '{}' at {}:{}", 
+                                "Cannot assign to borrowed variable '{}' at {}:{}",
                                 name, token.line, token.column
                             ));
                         }
@@ -113,9 +126,15 @@ impl OwnershipChecker {
                 self.exit_scope();
             }
 
-            Stmt::If { condition, then_branch, else_if_branches, else_branch, .. } => {
+            Stmt::If {
+                condition,
+                then_branch,
+                else_if_branches,
+                else_branch,
+                ..
+            } => {
                 self.check_expression(condition)?;
-                
+
                 self.enter_scope();
                 for stmt in then_branch {
                     self.check_statement(stmt)?;
@@ -140,7 +159,9 @@ impl OwnershipChecker {
                 }
             }
 
-            Stmt::While { condition, body, .. } => {
+            Stmt::While {
+                condition, body, ..
+            } => {
                 self.check_expression(condition)?;
                 self.enter_scope();
                 for stmt in body {
@@ -161,15 +182,18 @@ impl OwnershipChecker {
                 self.check_expression(expr)?;
             }
 
-            Stmt::Return { value, .. } => {
-                if let Some(expr) = value {
-                    self.check_expression(expr)?;
-                }
+            Stmt::Return {
+                value: Some(expr), ..
+            } => {
+                self.check_expression(expr)?;
             }
-            
+            Stmt::Return { value: None, .. } => {
+                // No expression to check
+            }
+
             _ => {}
         }
-        
+
         Ok(())
     }
 
@@ -180,12 +204,12 @@ impl OwnershipChecker {
                     if let Some(info) = self.variables.get_mut(name) {
                         if info.is_moved {
                             self.errors.push(format!(
-                                "Cannot move already moved variable '{}' at {}:{}", 
+                                "Cannot move already moved variable '{}' at {}:{}",
                                 name, token.line, token.column
                             ));
                         } else if !info.borrows.is_empty() {
                             self.errors.push(format!(
-                                "Cannot move borrowed variable '{}' at {}:{}", 
+                                "Cannot move borrowed variable '{}' at {}:{}",
                                 name, token.line, token.column
                             ));
                         } else {
@@ -196,14 +220,22 @@ impl OwnershipChecker {
                 }
             }
 
-            Expr::Borrow { expr, is_mutable, token } => {
+            Expr::Borrow {
+                expr,
+                is_mutable,
+                token,
+            } => {
                 if let Expr::Identifier { name, .. } = expr.as_ref() {
-                    let borrow_type = if *is_mutable { BorrowType::Mutable } else { BorrowType::Immutable };
+                    let borrow_type = if *is_mutable {
+                        BorrowType::Mutable
+                    } else {
+                        BorrowType::Immutable
+                    };
                     self.add_borrow(name, borrow_type, token.line, token.column)?;
                 }
                 self.check_expression(expr)?;
             }
-            
+
             Expr::BinaryOp { left, right, .. } => {
                 self.check_expression(left)?;
                 self.check_expression(right)?;
@@ -221,25 +253,31 @@ impl OwnershipChecker {
                     if info.is_moved {
                         if let Some((move_line, move_col)) = info.move_location {
                             self.errors.push(format!(
-                                "Use of moved variable '{}' at {}:{} (moved at {}:{})", 
+                                "Use of moved variable '{}' at {}:{} (moved at {}:{})",
                                 name, token.line, token.column, move_line, move_col
                             ));
                         }
                     }
                 }
             }
-            
+
             _ => {}
         }
-        
+
         Ok(())
     }
 
-    fn add_borrow(&mut self, var_name: &str, borrow_type: BorrowType, line: usize, column: usize) -> Result<(), String> {
+    fn add_borrow(
+        &mut self,
+        var_name: &str,
+        borrow_type: BorrowType,
+        line: usize,
+        column: usize,
+    ) -> Result<(), String> {
         if let Some(info) = self.variables.get_mut(var_name) {
             if info.is_moved {
                 return Err(format!(
-                    "Cannot borrow moved variable '{}' at {}:{}", 
+                    "Cannot borrow moved variable '{}' at {}:{}",
                     var_name, line, column
                 ));
             }
@@ -249,22 +287,26 @@ impl OwnershipChecker {
                 BorrowType::Mutable => {
                     if !info.borrows.is_empty() {
                         return Err(format!(
-                            "Cannot create mutable borrow of '{}' at {}:{} - already borrowed", 
+                            "Cannot create mutable borrow of '{}' at {}:{} - already borrowed",
                             var_name, line, column
                         ));
                     }
                     if !info.is_mutable {
                         return Err(format!(
-                            "Cannot create mutable borrow of immutable variable '{}' at {}:{}", 
+                            "Cannot create mutable borrow of immutable variable '{}' at {}:{}",
                             var_name, line, column
                         ));
                     }
                 }
                 BorrowType::Immutable => {
                     // Check for existing mutable borrows
-                    if info.borrows.iter().any(|b| b.borrow_type == BorrowType::Mutable) {
+                    if info
+                        .borrows
+                        .iter()
+                        .any(|b| b.borrow_type == BorrowType::Mutable)
+                    {
                         return Err(format!(
-                            "Cannot create immutable borrow of '{}' at {}:{} - mutably borrowed", 
+                            "Cannot create immutable borrow of '{}' at {}:{} - mutably borrowed",
                             var_name, line, column
                         ));
                     }
@@ -289,12 +331,14 @@ impl OwnershipChecker {
     fn exit_scope(&mut self) {
         // Remove borrows that go out of scope
         for info in self.variables.values_mut() {
-            info.borrows.retain(|borrow| borrow.scope_level < self.scope_level);
+            info.borrows
+                .retain(|borrow| borrow.scope_level < self.scope_level);
         }
-        
+
         // Remove variables that go out of scope
-        self.variables.retain(|_, info| info.scope_level < self.scope_level);
-        
+        self.variables
+            .retain(|_, info| info.scope_level < self.scope_level);
+
         self.scope_level -= 1;
     }
 

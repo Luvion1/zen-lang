@@ -1,10 +1,8 @@
-use crate::lexer::lexer::Lexer;
-use crate::parser::parser::Parser;
-use crate::ownership::OwnershipChecker;
-
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::lexer::lexer::Lexer;
+    use crate::ownership::OwnershipChecker;
+    use crate::parser::parser::Parser;
 
     fn parse_code(code: &str) -> crate::ast::program::Program {
         let mut lexer = Lexer::new(code);
@@ -22,11 +20,11 @@ mod tests {
                 return 0
             }
         "#;
-        
+
         let program = parse_code(code);
         let mut checker = OwnershipChecker::new();
         let result = checker.check(&program);
-        
+
         assert!(result.is_ok(), "Basic ownership transfer should work");
     }
 
@@ -40,11 +38,11 @@ mod tests {
                 return 0
             }
         "#;
-        
+
         let program = parse_code(code);
         let mut checker = OwnershipChecker::new();
         let result = checker.check(&program);
-        
+
         assert!(result.is_err(), "Use after move should be an error");
         assert!(result.unwrap_err().contains("Use of moved variable"));
     }
@@ -59,11 +57,11 @@ mod tests {
                 return 0
             }
         "#;
-        
+
         let program = parse_code(code);
         let mut checker = OwnershipChecker::new();
         let result = checker.check(&program);
-        
+
         assert!(result.is_ok(), "Immutable borrow should work");
     }
 
@@ -76,11 +74,11 @@ mod tests {
                 return 0
             }
         "#;
-        
+
         let program = parse_code(code);
         let mut checker = OwnershipChecker::new();
         let result = checker.check(&program);
-        
+
         assert!(result.is_ok(), "Mutable borrow should work");
     }
 
@@ -94,11 +92,11 @@ mod tests {
                 return 0
             }
         "#;
-        
+
         let program = parse_code(code);
         let mut checker = OwnershipChecker::new();
         let result = checker.check(&program);
-        
+
         assert!(result.is_ok(), "Multiple immutable borrows should work");
     }
 
@@ -112,12 +110,15 @@ mod tests {
                 return 0
             }
         "#;
-        
+
         let program = parse_code(code);
         let mut checker = OwnershipChecker::new();
         let result = checker.check(&program);
-        
-        assert!(result.is_err(), "Multiple mutable borrows should be an error");
+
+        assert!(
+            result.is_err(),
+            "Multiple mutable borrows should be an error"
+        );
         assert!(result.unwrap_err().contains("already borrowed"));
     }
 
@@ -131,12 +132,15 @@ mod tests {
                 return 0
             }
         "#;
-        
+
         let program = parse_code(code);
         let mut checker = OwnershipChecker::new();
         let result = checker.check(&program);
-        
-        assert!(result.is_err(), "Immutable borrow after mutable should be an error");
+
+        assert!(
+            result.is_err(),
+            "Immutable borrow after mutable should be an error"
+        );
         assert!(result.unwrap_err().contains("mutably borrowed"));
     }
 
@@ -150,13 +154,18 @@ mod tests {
                 return 0
             }
         "#;
-        
+
         let program = parse_code(code);
         let mut checker = OwnershipChecker::new();
         let result = checker.check(&program);
-        
-        assert!(result.is_err(), "Moving borrowed variable should be an error");
-        assert!(result.unwrap_err().contains("Cannot move borrowed variable"));
+
+        assert!(
+            result.is_err(),
+            "Moving borrowed variable should be an error"
+        );
+        assert!(result
+            .unwrap_err()
+            .contains("Cannot move borrowed variable"));
     }
 
     #[test]
@@ -171,11 +180,11 @@ mod tests {
                 return 0
             }
         "#;
-        
+
         let program = parse_code(code);
         let mut checker = OwnershipChecker::new();
         let result = checker.check(&program);
-        
+
         assert!(result.is_ok(), "Borrow should be cleaned up after scope");
     }
 }

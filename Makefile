@@ -1,6 +1,6 @@
 # Zen Programming Language Makefile
 
-.PHONY: build test clean install run-examples check fmt clippy help ci
+.PHONY: build test clean install run-examples check fmt clippy help ci debug debug-build debug-run fix
 
 # Default target
 all: build test
@@ -66,6 +66,28 @@ dev:
 	@echo "Building debug version..."
 	cargo build
 
+# Debug build with full symbols and no optimization
+debug-build:
+	@echo "Building debug version with full symbols..."
+	RUST_BACKTRACE=1 cargo build --profile dev
+
+# Debug run with backtrace and verbose output
+debug-run: debug-build
+	@echo "Running debug version with backtrace..."
+	RUST_BACKTRACE=full RUST_LOG=debug ./target/debug/zen
+
+# Debug a specific example with full output
+debug-%: debug-build
+	@echo "Debug running example: $*.zen"
+	RUST_BACKTRACE=full RUST_LOG=debug ./target/debug/zen run examples/$*.zen
+
+# Fix warnings and format code
+fix:
+	@echo "Fixing code issues..."
+	cargo fix --allow-dirty --allow-staged
+	cargo fmt
+	@echo "✅ Code fixed and formatted"
+
 # Run a specific example
 run-%: build
 	@echo "Running example: $*.zen"
@@ -87,6 +109,9 @@ help:
 	@echo ""
 	@echo "  build         - Build release version"
 	@echo "  dev           - Build debug version"
+	@echo "  debug-build   - Build debug with full symbols"
+	@echo "  debug-run     - Run debug version with backtrace"
+	@echo "  debug-<name>  - Debug run specific example"
 	@echo "  test          - Run all tests"
 	@echo "  clean         - Clean build artifacts"
 	@echo "  install       - Install globally to /usr/local/bin"
@@ -95,6 +120,7 @@ help:
 	@echo "  ci            - Full CI pipeline (check + run-examples)"
 	@echo "  fmt           - Format code"
 	@echo "  clippy        - Run lints"
+	@echo "  fix           - Fix warnings and format code"
 	@echo "  benchmark     - Benchmark compilation speed"
 	@echo "  run-<name>    - Run specific example (e.g., make run-hello)"
 	@echo "  compile-<name> - Compile specific example"

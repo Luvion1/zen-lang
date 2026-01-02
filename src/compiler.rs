@@ -59,12 +59,12 @@ impl Compiler {
 
     fn compile_internal(&mut self, input: &str, output: Option<&str>) -> anyhow::Result<()> {
         let total_start = Instant::now();
-        
+
         // Validate input file
         if !std::path::Path::new(input).exists() {
             anyhow::bail!("Input file '{}' does not exist", input);
         }
-        
+
         let source = std::fs::read_to_string(input)
             .map_err(|e| anyhow::anyhow!("Failed to read input file '{}': {}", input, e))?;
 
@@ -244,7 +244,7 @@ impl Compiler {
 
         let output_path_abs = std::env::current_dir()?.join(&output_path);
         let output_path_str = output_path_abs.to_string_lossy();
-        
+
         if self.verbose {
             println!("Running: {}", output_path_str);
         }
@@ -264,7 +264,7 @@ impl Compiler {
         // Output program results
         let stdout = std::str::from_utf8(&result.stdout).unwrap_or("Invalid UTF-8");
         let stderr = std::str::from_utf8(&result.stderr).unwrap_or("Invalid UTF-8");
-        
+
         print!("{}", stdout);
         if !stderr.is_empty() {
             eprint!("{}", stderr);
@@ -301,7 +301,11 @@ impl Compiler {
         let tokenizing_time = tokenizing_start.elapsed();
 
         if self.verbose {
-            println!("\ninfo: {} tokens found in {:?}", tokens.len(), tokenizing_time);
+            println!(
+                "\ninfo: {} tokens found in {:?}",
+                tokens.len(),
+                tokenizing_time
+            );
             println!("=== Token Analysis ===");
         }
 
@@ -323,7 +327,11 @@ impl Compiler {
         for (i, token) in tokens.iter().enumerate() {
             println!(
                 "{:3}: Token {{ kind: {:?}, lexeme: \"{}\", line: {}, column: {} }}",
-                i + 1, token.kind, token.lexeme, token.line, token.column
+                i + 1,
+                token.kind,
+                token.lexeme,
+                token.line,
+                token.column
             );
         }
 

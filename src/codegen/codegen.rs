@@ -57,8 +57,14 @@ impl CodeGenerator {
 
         for (i, s) in strings.iter().enumerate() {
             use std::fmt::Write;
-            writeln!(ir, "@.str.{} = private unnamed_addr constant [{} x i8] c\"{}\\00\"",
-                i, s.len() + 1, self.escape_for_llvm(s)).unwrap();
+            writeln!(
+                ir,
+                "@.str.{} = private unnamed_addr constant [{} x i8] c\"{}\\00\"",
+                i,
+                s.len() + 1,
+                self.escape_for_llvm(s)
+            )
+            .unwrap();
         }
         #[allow(clippy::single_char_add_str)]
         ir.push_str("\n");
@@ -108,7 +114,8 @@ impl CodeGenerator {
 
     fn register_structs(&mut self, stmt: &Stmt) {
         if let Stmt::StructDecl { name, fields, .. } = stmt {
-            let field_types: Vec<(String, String)> = fields.iter()
+            let field_types: Vec<(String, String)> = fields
+                .iter()
                 .map(|(field_name, field_type)| (field_name.clone(), field_type.clone()))
                 .collect();
             self.structs.insert(name.clone(), field_types);
@@ -118,14 +125,15 @@ impl CodeGenerator {
     fn generate_struct_types(&self, ir: &mut String) {
         for (struct_name, fields) in &self.structs {
             ir.push_str(&format!("%struct.{} = type {{ ", struct_name));
-            let field_types: Vec<String> = fields.iter()
+            let field_types: Vec<String> = fields
+                .iter()
                 .map(|(_, field_type)| self.get_llvm_type(field_type).to_string())
                 .collect();
             ir.push_str(&field_types.join(", "));
             ir.push_str(" }\n");
         }
         if !self.structs.is_empty() {
-            ir.push_str("\n");
+            ir.push('\n');
         }
     }
 
@@ -177,25 +185,32 @@ impl CodeGenerator {
             Expr::BooleanLiteral { .. } => "bool".to_string(),
             Expr::CharLiteral { .. } => "char".to_string(),
             Expr::StringLiteral { .. } => "str".to_string(),
-            Expr::Identifier { name, .. } => {
-                self.variables.get(name)
-                    .map(|(t, _, _)| t.clone())
-                    .unwrap_or_else(|| {
-                        eprintln!("Warning: Cannot infer type for undefined variable '{}'", name);
-                        "i32".to_string()
-                    })
-            }
+            Expr::Identifier { name, .. } => self
+                .variables
+                .get(name)
+                .map(|(t, _, _)| t.clone())
+                .unwrap_or_else(|| {
+                    eprintln!(
+                        "Warning: Cannot infer type for undefined variable '{}'",
+                        name
+                    );
+                    "i32".to_string()
+                }),
             Expr::BinaryOp { left, op, right } => {
                 match op.kind {
-                    TokenType::EqualEqual | TokenType::NotEqual |
-                    TokenType::LessThan | TokenType::LessEqual |
-                    TokenType::GreaterThan | TokenType::GreaterEqual |
-                    TokenType::And | TokenType::Or => "bool".to_string(),
+                    TokenType::EqualEqual
+                    | TokenType::NotEqual
+                    | TokenType::LessThan
+                    | TokenType::LessEqual
+                    | TokenType::GreaterThan
+                    | TokenType::GreaterEqual
+                    | TokenType::And
+                    | TokenType::Or => "bool".to_string(),
                     _ => {
                         // For arithmetic operations, return the "higher" type
                         let left_type = self.infer_expression_type(left);
                         let right_type = self.infer_expression_type(right);
-                        
+
                         if left_type == "f64" || right_type == "f64" {
                             "f64".to_string()
                         } else if left_type == "f32" || right_type == "f32" {
@@ -209,7 +224,8 @@ impl CodeGenerator {
             Expr::UnaryOp { operand, .. } => self.infer_expression_type(operand),
             Expr::Call { callee, .. } => {
                 if let Expr::Identifier { name, .. } = callee.as_ref() {
-                    self.functions.get(name)
+                    self.functions
+                        .get(name)
                         .map(|(_, ret_type)| ret_type.clone())
                         .unwrap_or_else(|| "i32".to_string())
                 } else {
@@ -221,8 +237,10 @@ impl CodeGenerator {
                 let object_type = self.infer_expression_type(object);
                 if let Some(struct_name) = self.get_struct_name_from_type(&object_type) {
                     if let Some(struct_fields) = self.structs.get(struct_name) {
-                        if let Some((_, field_type)) = struct_fields.iter()
-                            .find(|(field_name, _)| field_name == field) {
+                        if let Some((_, field_type)) = struct_fields
+                            .iter()
+                            .find(|(field_name, _)| field_name == field)
+                        {
                             field_type.clone()
                         } else {
                             "i32".to_string()
@@ -257,18 +275,26 @@ impl CodeGenerator {
         let mut op_type = target_type.to_string();
 
         // Handle numeric promotions
-        if (left_type == "i32" && right_type == "f64") || (left_type == "f64" && right_type == "i32") {
+        if (left_type == "i32" && right_type == "f64")
+            || (left_type == "f64" && right_type == "i32")
+        {
             op_type = "f64".to_string();
-            
+
             if left_type == "i32" {
                 let id = self.fresh_id();
-                ir.push_str(&format!("  %{} = sitofp i32 {} to double\n", id, final_left));
+                ir.push_str(&format!(
+                    "  %{} = sitofp i32 {} to double\n",
+                    id, final_left
+                ));
                 final_left = format!("%{}", id);
             }
-            
+
             if right_type == "i32" {
                 let id = self.fresh_id();
-                ir.push_str(&format!("  %{} = sitofp i32 {} to double\n", id, final_right));
+                ir.push_str(&format!(
+                    "  %{} = sitofp i32 {} to double\n",
+                    id, final_right
+                ));
                 final_right = format!("%{}", id);
             }
         }
@@ -280,7 +306,7 @@ impl CodeGenerator {
                 ir.push_str(&format!("  %{} = icmp ne i32 {}, 0\n", id, final_left));
                 final_left = format!("%{}", id);
             }
-            
+
             if right_type != "bool" {
                 let id = self.fresh_id();
                 ir.push_str(&format!("  %{} = icmp ne i32 {}, 0\n", id, final_right));
@@ -298,27 +324,27 @@ impl CodeGenerator {
         match (target_type, source_type) {
             // Exact matches
             (a, b) if a == b => true,
-            
+
             // Numeric promotions
             ("f64", "f32") | ("f64", "i32") | ("f64", "i16") | ("f64", "i8") => true,
             ("f32", "i32") | ("f32", "i16") | ("f32", "i8") => true,
             ("i64", "i32") | ("i64", "i16") | ("i64", "i8") => true,
             ("i32", "i16") | ("i32", "i8") => true,
             ("i16", "i8") => true,
-            
+
             // Unsigned to signed (with warning)
             ("i32", "u32") | ("i16", "u16") | ("i8", "u8") => {
                 eprintln!("Warning: Implicit conversion from unsigned to signed type");
                 true
             }
-            
+
             // Boolean conversions
             ("bool", "i32") | ("bool", "i16") | ("bool", "i8") => true,
             ("i32", "bool") | ("i16", "bool") | ("i8", "bool") => true,
-            
+
             // Character conversions
             ("char", "i8") | ("i8", "char") => true,
-            
+
             _ => false,
         }
     }
@@ -431,7 +457,9 @@ impl CodeGenerator {
                         crate::ast::expr::Expr::FloatLiteral { .. } => "f64".to_string(),
                         crate::ast::expr::Expr::BooleanLiteral { .. } => "bool".to_string(),
                         crate::ast::expr::Expr::CharLiteral { .. } => "char".to_string(),
-                        crate::ast::expr::Expr::StructLiteral { struct_name, .. } => struct_name.clone(),
+                        crate::ast::expr::Expr::StructLiteral { struct_name, .. } => {
+                            struct_name.clone()
+                        }
                         _ => {
                             // Use expression type inference for complex expressions
                             self.infer_expression_type(init)
@@ -454,7 +482,12 @@ impl CodeGenerator {
 
                 if let Some(init) = initializer {
                     // Handle struct literals specially
-                    if let crate::ast::expr::Expr::StructLiteral { struct_name, fields, .. } = init {
+                    if let crate::ast::expr::Expr::StructLiteral {
+                        struct_name,
+                        fields,
+                        ..
+                    } = init
+                    {
                         if struct_name == &zen_type && self.structs.contains_key(struct_name) {
                             // Generate struct literal directly into the allocated space
                             let struct_fields = self.structs.get(struct_name).unwrap().clone();
@@ -480,10 +513,15 @@ impl CodeGenerator {
                                                        gep_id, llvm_type, llvm_type, id, field_index));
 
                                     // Store field value
-                                    ir.push_str(&format!("  store {} {}, {}* %{}\n",
-                                                       field_llvm_type, field_value, field_llvm_type, gep_id));
+                                    ir.push_str(&format!(
+                                        "  store {} {}, {}* %{}\n",
+                                        field_llvm_type, field_value, field_llvm_type, gep_id
+                                    ));
                                 } else {
-                                    eprintln!("Warning: Missing field '{}' in struct '{}' literal", field_name, struct_name);
+                                    eprintln!(
+                                        "Warning: Missing field '{}' in struct '{}' literal",
+                                        field_name, struct_name
+                                    );
                                 }
                             }
                         } else {
@@ -492,7 +530,7 @@ impl CodeGenerator {
                     } else {
                         let init_value = self.generate_expression(init, ir);
                         let init_type = self.infer_expression_type(init);
-                        
+
                         // Handle type conversion if needed
                         if zen_type == "bool" && init_type == "bool" {
                             // For boolean variables with boolean expressions
@@ -524,10 +562,13 @@ impl CodeGenerator {
                         let (zen_type, _, alloc_id) = var_info;
                         let llvm_type = self.get_llvm_type(&zen_type);
                         let value_str = self.generate_expression(value, ir);
-                        
+
                         // Handle string assignment specially
                         if zen_type == "str" {
-                            ir.push_str(&format!("  store i8* {}, i8** %{}\n", value_str, alloc_id));
+                            ir.push_str(&format!(
+                                "  store i8* {}, i8** %{}\n",
+                                value_str, alloc_id
+                            ));
                         } else {
                             ir.push_str(&format!(
                                 "  store {} {}, {}* %{}\n",
@@ -552,7 +593,7 @@ impl CodeGenerator {
                 if let Some(v) = value {
                     let value_str = self.generate_expression(v, ir);
                     let expr_type = self.infer_expression_type(v);
-                    
+
                     // Handle type conversion for return values
                     if return_type == "i1" && expr_type != "bool" {
                         // Convert to boolean
@@ -581,7 +622,7 @@ impl CodeGenerator {
             } => {
                 let cond_value = self.generate_expression(condition, ir);
                 let cond_type = self.infer_expression_type(condition);
-                
+
                 // Convert to i1 for branch condition
                 let bool_cond = if cond_type == "bool" && cond_value.starts_with('%') {
                     // Already i1, use directly
@@ -600,11 +641,9 @@ impl CodeGenerator {
 
                 let then_label = self.fresh_label();
                 let end_label = self.fresh_label();
-                
+
                 // Determine the first alternative label
-                let first_alt_label = if !else_if_branches.is_empty() {
-                    self.fresh_label()
-                } else if else_branch.is_some() {
+                let first_alt_label = if !else_if_branches.is_empty() || else_branch.is_some() {
                     self.fresh_label()
                 } else {
                     end_label
@@ -613,9 +652,15 @@ impl CodeGenerator {
                 // Branch to then or first alternative
                 ir.push_str(&format!(
                     "  br i1 {}, label %then.{}, label %{}{}{}",
-                    bool_cond, 
+                    bool_cond,
                     then_label,
-                    if !else_if_branches.is_empty() { "elseif." } else if else_branch.is_some() { "else." } else { "end." },
+                    if !else_if_branches.is_empty() {
+                        "elseif."
+                    } else if else_branch.is_some() {
+                        "else."
+                    } else {
+                        "end."
+                    },
                     first_alt_label,
                     "\n"
                 ));
@@ -639,40 +684,50 @@ impl CodeGenerator {
                     if !else_if_branches.is_empty() {
                         ir.push_str(&format!("elseif.{}:\n", current_label));
                     }
-                    
+
                     // Generate condition for this else if
-                    let else_if_cond_value = self.generate_expression(&else_if_branch.condition, ir);
+                    let else_if_cond_value =
+                        self.generate_expression(&else_if_branch.condition, ir);
                     let else_if_cond_type = self.infer_expression_type(&else_if_branch.condition);
-                    let else_if_bool_cond = if else_if_cond_type == "bool" && else_if_cond_value.starts_with('%') {
-                        // Already i1, use directly
-                        else_if_cond_value
-                    } else {
-                        let bool_id = self.fresh_id();
-                        ir.push_str(&format!("  %{} = icmp ne i32 {}, 0\n", bool_id, else_if_cond_value));
-                        format!("%{}", bool_id)
-                    };
-                    
+                    let else_if_bool_cond =
+                        if else_if_cond_type == "bool" && else_if_cond_value.starts_with('%') {
+                            // Already i1, use directly
+                            else_if_cond_value
+                        } else {
+                            let bool_id = self.fresh_id();
+                            ir.push_str(&format!(
+                                "  %{} = icmp ne i32 {}, 0\n",
+                                bool_id, else_if_cond_value
+                            ));
+                            format!("%{}", bool_id)
+                        };
+
                     let else_if_then_label = self.fresh_label();
-                    
+
                     // Determine next alternative label
-                    let next_alt_label = if i + 1 < else_if_branches.len() {
-                        self.fresh_label()
-                    } else if else_branch.is_some() {
+                    let next_alt_label = if i + 1 < else_if_branches.len() || else_branch.is_some()
+                    {
                         self.fresh_label()
                     } else {
                         end_label
                     };
-                    
+
                     // Branch for this else if
                     ir.push_str(&format!(
                         "  br i1 {}, label %then.{}, label %{}{}{}",
                         else_if_bool_cond,
                         else_if_then_label,
-                        if i + 1 < else_if_branches.len() { "elseif." } else if else_branch.is_some() { "else." } else { "end." },
+                        if i + 1 < else_if_branches.len() {
+                            "elseif."
+                        } else if else_branch.is_some() {
+                            "else."
+                        } else {
+                            "end."
+                        },
                         next_alt_label,
                         "\n"
                     ));
-                    
+
                     // Generate else if body
                     ir.push_str(&format!("then.{}:\n", else_if_then_label));
                     let mut else_if_terminated = false;
@@ -685,7 +740,7 @@ impl CodeGenerator {
                     if !else_if_terminated {
                         ir.push_str(&format!("  br label %end.{}\n", end_label));
                     }
-                    
+
                     current_label = next_alt_label;
                 }
 
@@ -725,7 +780,7 @@ impl CodeGenerator {
                 ir.push_str(&format!("cond.{}:\n", cond_label));
                 let cond_value = self.generate_expression(condition, ir);
                 let cond_type = self.infer_expression_type(condition);
-                
+
                 // Convert to i1 for branch condition
                 let bool_cond = if cond_type == "bool" && cond_value.starts_with('%') {
                     // Already i1, use directly
@@ -735,7 +790,7 @@ impl CodeGenerator {
                     ir.push_str(&format!("  %{} = icmp ne i32 {}, 0\n", bool_id, cond_value));
                     format!("%{}", bool_id)
                 };
-                
+
                 ir.push_str(&format!(
                     "  br i1 {}, label %body.{}, label %end.{}\n",
                     bool_cond, body_label, end_label
@@ -772,7 +827,7 @@ impl CodeGenerator {
                 if let Some(cond) = condition {
                     let cond_value = self.generate_expression(cond, ir);
                     let cond_type = self.infer_expression_type(cond);
-                    
+
                     // Convert to i1 for branch condition
                     let bool_cond = if cond_type == "bool" && cond_value.starts_with('%') {
                         // Already i1, use directly
@@ -782,7 +837,7 @@ impl CodeGenerator {
                         ir.push_str(&format!("  %{} = icmp ne i32 {}, 0\n", bool_id, cond_value));
                         format!("%{}", bool_id)
                     };
-                    
+
                     ir.push_str(&format!(
                         "  br i1 {}, label %body.{}, label %end.{}\n",
                         bool_cond, body_label, end_label
@@ -839,11 +894,12 @@ impl CodeGenerator {
             Expr::IntegerLiteral { value, .. } => {
                 // Enhanced integer literal handling with validation
                 match value.parse::<i64>() {
-                    Ok(val) if val >= i32::MIN as i64 && val <= i32::MAX as i64 => {
-                        val.to_string()
-                    }
+                    Ok(val) if val >= i32::MIN as i64 && val <= i32::MAX as i64 => val.to_string(),
                     Ok(val) => {
-                        eprintln!("Warning: Integer literal {} may overflow i32, truncating", val);
+                        eprintln!(
+                            "Warning: Integer literal {} may overflow i32, truncating",
+                            val
+                        );
                         (val as i32).to_string()
                     }
                     Err(_) => {
@@ -867,9 +923,7 @@ impl CodeGenerator {
                 }
             }
 
-            Expr::BooleanLiteral { value, .. } => {
-                if *value { "1" } else { "0" }.to_string()
-            }
+            Expr::BooleanLiteral { value, .. } => if *value { "1" } else { "0" }.to_string(),
 
             Expr::CharLiteral { value, .. } => {
                 let ascii_value = *value as u8;
@@ -882,13 +936,9 @@ impl CodeGenerator {
                 }
             }
 
-            Expr::StringLiteral { value, .. } => {
-                self.generate_string_literal(value, ir)
-            }
+            Expr::StringLiteral { value, .. } => self.generate_string_literal(value, ir),
 
-            Expr::InterpolatedString { parts, .. } => {
-                self.generate_interpolated_string(parts, ir)
-            }
+            Expr::InterpolatedString { parts, .. } => self.generate_interpolated_string(parts, ir),
 
             Expr::Identifier { name, .. } => {
                 // Enhanced identifier resolution with validation
@@ -896,7 +946,7 @@ impl CodeGenerator {
                     let (zen_type, _, alloc_id) = var_info;
                     let llvm_type = self.get_llvm_type(&zen_type);
                     let id = self.fresh_id();
-                    
+
                     // Enhanced type-specific loading
                     match zen_type.as_str() {
                         "str" => {
@@ -925,15 +975,18 @@ impl CodeGenerator {
             Expr::BinaryOp { left, op, right } => {
                 let left_type = self.infer_expression_type(left);
                 let right_type = self.infer_expression_type(right);
-                
+
                 let left_val = self.generate_expression(left, ir);
                 let right_val = self.generate_expression(right, ir);
 
                 // Handle comparison operations that return bool
                 let result = match op.kind {
-                    TokenType::EqualEqual | TokenType::NotEqual |
-                    TokenType::LessThan | TokenType::LessEqual |
-                    TokenType::GreaterThan | TokenType::GreaterEqual => {
+                    TokenType::EqualEqual
+                    | TokenType::NotEqual
+                    | TokenType::LessThan
+                    | TokenType::LessEqual
+                    | TokenType::GreaterThan
+                    | TokenType::GreaterEqual => {
                         let op_str = if left_type == "f64" || right_type == "f64" {
                             match op.kind {
                                 TokenType::EqualEqual => "fcmp oeq double",
@@ -956,16 +1009,19 @@ impl CodeGenerator {
                             }
                         };
                         let id = self.fresh_id();
-                        ir.push_str(&format!("  %{} = {} {}, {}\n", id, op_str, left_val, right_val));
-                        
+                        ir.push_str(&format!(
+                            "  %{} = {} {}, {}\n",
+                            id, op_str, left_val, right_val
+                        ));
+
                         // Return i1 result directly - don't convert to i32 unless needed
                         format!("%{}", id)
                     }
-                    
+
                     TokenType::And | TokenType::Or => {
                         // For logical operations, work with i1 directly
                         let result_id = self.fresh_id();
-                        
+
                         // Check if operands are already boolean values (i1)
                         let left_bool_val = if left_type == "bool" && left_val.starts_with('%') {
                             // Already loaded boolean variable (i1), use directly
@@ -981,33 +1037,42 @@ impl CodeGenerator {
                             ir.push_str(&format!("  %{} = icmp ne i32 {}, 0\n", bool_id, left_val));
                             format!("%{}", bool_id)
                         };
-                        
+
                         let right_bool_val = if right_type == "bool" && right_val.starts_with('%') {
                             // Already loaded boolean variable (i1), use directly
                             right_val
                         } else if right_type == "bool" {
                             // Boolean literal (0 or 1), convert to i1
                             let bool_id = self.fresh_id();
-                            ir.push_str(&format!("  %{} = icmp ne i32 {}, 0\n", bool_id, right_val));
+                            ir.push_str(&format!(
+                                "  %{} = icmp ne i32 {}, 0\n",
+                                bool_id, right_val
+                            ));
                             format!("%{}", bool_id)
                         } else {
                             // Convert non-boolean to boolean
                             let bool_id = self.fresh_id();
-                            ir.push_str(&format!("  %{} = icmp ne i32 {}, 0\n", bool_id, right_val));
+                            ir.push_str(&format!(
+                                "  %{} = icmp ne i32 {}, 0\n",
+                                bool_id, right_val
+                            ));
                             format!("%{}", bool_id)
                         };
-                        
+
                         let op_str = match op.kind {
                             TokenType::And => "and i1",
                             TokenType::Or => "or i1",
                             _ => "and i1",
                         };
-                        ir.push_str(&format!("  %{} = {} {}, {}\n", result_id, op_str, left_bool_val, right_bool_val));
-                        
+                        ir.push_str(&format!(
+                            "  %{} = {} {}, {}\n",
+                            result_id, op_str, left_bool_val, right_bool_val
+                        ));
+
                         // Return i1 result directly - don't convert to i32
                         format!("%{}", result_id)
                     }
-                    
+
                     _ => {
                         // Arithmetic operations
                         let id = self.fresh_id();
@@ -1030,11 +1095,14 @@ impl CodeGenerator {
                                 _ => "add i32",
                             }
                         };
-                        ir.push_str(&format!("  %{} = {} {}, {}\n", id, op_str, left_val, right_val));
+                        ir.push_str(&format!(
+                            "  %{} = {} {}, {}\n",
+                            id, op_str, left_val, right_val
+                        ));
                         format!("%{}", id)
                     }
                 };
-                
+
                 result
             }
 
@@ -1052,7 +1120,10 @@ impl CodeGenerator {
                         let bool_id = self.fresh_id();
                         let not_id = self.fresh_id();
                         let final_id = self.fresh_id();
-                        ir.push_str(&format!("  %{} = icmp ne i32 {}, 0\n", bool_id, operand_val));
+                        ir.push_str(&format!(
+                            "  %{} = icmp ne i32 {}, 0\n",
+                            bool_id, operand_val
+                        ));
                         ir.push_str(&format!("  %{} = xor i1 %{}, true\n", not_id, bool_id));
                         ir.push_str(&format!("  %{} = zext i1 %{} to i32\n", final_id, not_id));
                         format!("%{}", final_id)
@@ -1082,7 +1153,10 @@ impl CodeGenerator {
                                     let val = self.generate_expression(arg, ir);
                                     // Convert i1 to i32 for printing
                                     let conv_id = self.fresh_id();
-                                    ir.push_str(&format!("  %{} = zext i1 {} to i32\n", conv_id, val));
+                                    ir.push_str(&format!(
+                                        "  %{} = zext i1 {} to i32\n",
+                                        conv_id, val
+                                    ));
                                     let fmt_id = self.fresh_id();
                                     ir.push_str(&format!("  %{} = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @int_fmt, i64 0, i64 0), i32 %{})\n",
                                         fmt_id, conv_id));
@@ -1091,7 +1165,10 @@ impl CodeGenerator {
                                     let val = self.generate_expression(arg, ir);
                                     // Convert i8 to i32 for printing
                                     let conv_id = self.fresh_id();
-                                    ir.push_str(&format!("  %{} = zext i8 {} to i32\n", conv_id, val));
+                                    ir.push_str(&format!(
+                                        "  %{} = zext i8 {} to i32\n",
+                                        conv_id, val
+                                    ));
                                     let fmt_id = self.fresh_id();
                                     ir.push_str(&format!("  %{} = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @int_fmt, i64 0, i64 0), i32 %{})\n",
                                         fmt_id, conv_id));
@@ -1126,7 +1203,7 @@ impl CodeGenerator {
                                         .variables
                                         .get(name)
                                         .is_some_and(|(t, _, _)| t == "char");
-                                    
+
                                     if is_string {
                                         let call_id = self.fresh_id();
                                         ir.push_str(&format!(
@@ -1136,7 +1213,10 @@ impl CodeGenerator {
                                     } else if is_char {
                                         // Convert i8 to i32 for printing
                                         let conv_id = self.fresh_id();
-                                        ir.push_str(&format!("  %{} = zext i8 {} to i32\n", conv_id, val));
+                                        ir.push_str(&format!(
+                                            "  %{} = zext i8 {} to i32\n",
+                                            conv_id, val
+                                        ));
                                         let fmt_id = self.fresh_id();
                                         ir.push_str(&format!("  %{} = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @int_fmt, i64 0, i64 0), i32 %{})\n",
                                             fmt_id, conv_id));
@@ -1146,7 +1226,10 @@ impl CodeGenerator {
                                         } else if is_bool {
                                             // Convert i1 to i32 for printing
                                             let conv_id = self.fresh_id();
-                                            ir.push_str(&format!("  %{} = zext i1 {} to i32\n", conv_id, val));
+                                            ir.push_str(&format!(
+                                                "  %{} = zext i1 {} to i32\n",
+                                                conv_id, val
+                                            ));
                                             ("@int_fmt", "i32", format!("%{}", conv_id))
                                         } else {
                                             ("@int_fmt", "i32", val)
@@ -1162,15 +1245,28 @@ impl CodeGenerator {
                                         if matches!(left.as_ref(), Expr::FloatLiteral { .. }) || matches!(right.as_ref(), Expr::FloatLiteral { .. }) ||
                                             matches!(left.as_ref(), Expr::Identifier { name, .. } if self.variables.get(name).is_some_and(|(t,_,_)| t=="f64"||t=="f32")) ||
                                             matches!(right.as_ref(), Expr::Identifier { name, .. } if self.variables.get(name).is_some_and(|(t,_,_)| t=="f64"||t=="f32")));
-                                    
-                                    let is_bool = matches!(op.kind, TokenType::And | TokenType::Or | TokenType::EqualEqual | TokenType::NotEqual | TokenType::LessThan | TokenType::LessEqual | TokenType::GreaterThan | TokenType::GreaterEqual);
-                                    
+
+                                    let is_bool = matches!(
+                                        op.kind,
+                                        TokenType::And
+                                            | TokenType::Or
+                                            | TokenType::EqualEqual
+                                            | TokenType::NotEqual
+                                            | TokenType::LessThan
+                                            | TokenType::LessEqual
+                                            | TokenType::GreaterThan
+                                            | TokenType::GreaterEqual
+                                    );
+
                                     let (fmt_name, val_type, final_val) = if is_float {
                                         ("@float_fmt", "double", val)
                                     } else if is_bool {
                                         // Convert i1 to i32 for printing
                                         let conv_id = self.fresh_id();
-                                        ir.push_str(&format!("  %{} = zext i1 {} to i32\n", conv_id, val));
+                                        ir.push_str(&format!(
+                                            "  %{} = zext i1 {} to i32\n",
+                                            conv_id, val
+                                        ));
                                         ("@int_fmt", "i32", format!("%{}", conv_id))
                                     } else {
                                         ("@int_fmt", "i32", val)
@@ -1222,7 +1318,10 @@ impl CodeGenerator {
                         }
                     } else {
                         // Unknown function - generate a placeholder call that returns 0
-                        eprintln!("Warning: Unknown function '{}', generating placeholder", name);
+                        eprintln!(
+                            "Warning: Unknown function '{}', generating placeholder",
+                            name
+                        );
                         "0".to_string()
                     }
                 } else {
@@ -1231,8 +1330,10 @@ impl CodeGenerator {
             }
 
             Expr::OwnershipTransfer { expr, .. } => self.generate_expression(expr, ir),
-            
-            Expr::Borrow { expr, is_mutable, .. } => {
+
+            Expr::Borrow {
+                expr, is_mutable, ..
+            } => {
                 // For now, treat borrows as the underlying expression
                 // In a full implementation, this would generate pointer types
                 if *is_mutable {
@@ -1246,12 +1347,12 @@ impl CodeGenerator {
             Expr::FieldAccess { object, field, .. } => {
                 self.generate_field_access(object, field, ir)
             }
-            Expr::StructLiteral { struct_name, fields, .. } => {
-                self.generate_struct_literal(struct_name, fields, ir)
-            }
-            Expr::ArrayAccess { array, index, .. } => {
-                self.generate_array_access(array, index, ir)
-            }
+            Expr::StructLiteral {
+                struct_name,
+                fields,
+                ..
+            } => self.generate_struct_literal(struct_name, fields, ir),
+            Expr::ArrayAccess { array, index, .. } => self.generate_array_access(array, index, ir),
             Expr::ModuleAccess { item, .. } => {
                 // Enhanced but stable module access
                 item.clone()
@@ -1282,25 +1383,34 @@ impl CodeGenerator {
         if let Some(struct_name) = self.get_struct_name_from_type(&object_type) {
             if let Some(struct_fields) = self.structs.get(struct_name) {
                 // Find field index
-                if let Some((field_index, (_, field_type))) = struct_fields.iter().enumerate()
-                    .find(|(_, (field_name, _))| field_name == field) {
-
+                if let Some((field_index, (_, field_type))) = struct_fields
+                    .iter()
+                    .enumerate()
+                    .find(|(_, (field_name, _))| field_name == field)
+                {
                     let field_llvm_type = self.get_llvm_type(field_type);
                     let struct_llvm_type = self.get_llvm_type(struct_name);
 
                     // Generate getelementptr for field access
                     let gep_id = self.fresh_id();
-                    ir.push_str(&format!("  %{} = getelementptr inbounds {}, {}* {}, i32 0, i32 {}\n",
-                                       gep_id, struct_llvm_type, struct_llvm_type, object_ptr, field_index));
+                    ir.push_str(&format!(
+                        "  %{} = getelementptr inbounds {}, {}* {}, i32 0, i32 {}\n",
+                        gep_id, struct_llvm_type, struct_llvm_type, object_ptr, field_index
+                    ));
 
                     // Load the field value
                     let load_id = self.fresh_id();
-                    ir.push_str(&format!("  %{} = load {}, {}* %{}\n",
-                                       load_id, field_llvm_type, field_llvm_type, gep_id));
+                    ir.push_str(&format!(
+                        "  %{} = load {}, {}* %{}\n",
+                        load_id, field_llvm_type, field_llvm_type, gep_id
+                    ));
 
                     format!("%{}", load_id)
                 } else {
-                    eprintln!("Error: Field '{}' does not exist in struct '{}'", field, struct_name);
+                    eprintln!(
+                        "Error: Field '{}' does not exist in struct '{}'",
+                        field, struct_name
+                    );
                     "0".to_string()
                 }
             } else {
@@ -1313,7 +1423,12 @@ impl CodeGenerator {
         }
     }
 
-    fn generate_struct_literal(&mut self, struct_name: &str, fields: &[(String, Expr)], ir: &mut String) -> String {
+    fn generate_struct_literal(
+        &mut self,
+        struct_name: &str,
+        fields: &[(String, Expr)],
+        ir: &mut String,
+    ) -> String {
         // Get struct field information first (immutable borrow)
         let struct_fields = if let Some(fields) = self.structs.get(struct_name) {
             fields.clone()
@@ -1337,14 +1452,17 @@ impl CodeGenerator {
                 let field_value = self.generate_expression(field_expr, ir);
                 field_values.push(field_value);
             } else {
-                eprintln!("Warning: Missing field '{}' in struct '{}' literal", field_name, struct_name);
+                eprintln!(
+                    "Warning: Missing field '{}' in struct '{}' literal",
+                    field_name, struct_name
+                );
                 field_values.push("0".to_string());
             }
         }
 
         // Create struct constant
         let struct_llvm_type = self.get_llvm_type(struct_name);
-        
+
         // Allocate space for the struct
         let alloc_id = self.fresh_id();
         ir.push_str(&format!("  %{} = alloca {}\n", alloc_id, struct_llvm_type));
@@ -1352,13 +1470,17 @@ impl CodeGenerator {
         // Store each field individually using getelementptr
         for (field_index, field_value) in field_values.iter().enumerate() {
             let gep_id = self.fresh_id();
-            ir.push_str(&format!("  %{} = getelementptr inbounds {}, {}* %{}, i32 0, i32 {}\n",
-                               gep_id, struct_llvm_type, struct_llvm_type, alloc_id, field_index));
-            
+            ir.push_str(&format!(
+                "  %{} = getelementptr inbounds {}, {}* %{}, i32 0, i32 {}\n",
+                gep_id, struct_llvm_type, struct_llvm_type, alloc_id, field_index
+            ));
+
             let field_type = &struct_fields[field_index].1;
             let field_llvm_type = self.get_llvm_type(field_type);
-            ir.push_str(&format!("  store {} {}, {}* %{}\n",
-                               field_llvm_type, field_value, field_llvm_type, gep_id));
+            ir.push_str(&format!(
+                "  store {} {}, {}* %{}\n",
+                field_llvm_type, field_value, field_llvm_type, gep_id
+            ));
         }
 
         format!("%{}", alloc_id)
@@ -1367,15 +1489,17 @@ impl CodeGenerator {
     fn generate_array_access(&mut self, array: &Expr, index: &Expr, ir: &mut String) -> String {
         let array_val = self.generate_expression(array, ir);
         let index_val = self.generate_expression(index, ir);
-        
+
         // For now, simple implementation - would need more sophisticated handling
         let id = self.fresh_id();
-        ir.push_str(&format!("  %{} = getelementptr inbounds i32, i32* {}, i32 {}\n", 
-                           id, array_val, index_val));
-        
+        ir.push_str(&format!(
+            "  %{} = getelementptr inbounds i32, i32* {}, i32 {}\n",
+            id, array_val, index_val
+        ));
+
         let load_id = self.fresh_id();
         ir.push_str(&format!("  %{} = load i32, i32* %{}\n", load_id, id));
-        
+
         format!("%{}", load_id)
     }
 
@@ -1406,7 +1530,11 @@ impl CodeGenerator {
         format!("%{}", ptr_id)
     }
 
-    fn generate_interpolated_string(&mut self, parts: &[crate::ast::expr::StringPart], ir: &mut String) -> String {
+    fn generate_interpolated_string(
+        &mut self,
+        parts: &[crate::ast::expr::StringPart],
+        ir: &mut String,
+    ) -> String {
         // Simple approach: print each part separately
         for part in parts {
             match part {
@@ -1417,15 +1545,13 @@ impl CodeGenerator {
                             token: crate::token::Token::new(
                                 crate::token::TokenType::StringLiteral,
                                 format!("\"{}\"", text),
-                                1, 1
+                                1,
+                                1,
                             ),
                         };
                         let val = self.generate_expression(&text_literal, ir);
                         let call_id = self.fresh_id();
-                        ir.push_str(&format!(
-                            "  %{} = call i32 @printf(i8* {})\n",
-                            call_id, val
-                        ));
+                        ir.push_str(&format!("  %{} = call i32 @printf(i8* {})\n", call_id, val));
                     }
                 }
                 crate::ast::expr::StringPart::Variable(var_name) => {
@@ -1433,14 +1559,20 @@ impl CodeGenerator {
                         match var_type.as_str() {
                             "i32" => {
                                 let load_id = self.fresh_id();
-                                ir.push_str(&format!("  %{} = load i32, i32* %{}\n", load_id, alloc_id));
+                                ir.push_str(&format!(
+                                    "  %{} = load i32, i32* %{}\n",
+                                    load_id, alloc_id
+                                ));
                                 let fmt_id = self.fresh_id();
                                 ir.push_str(&format!("  %{} = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @int_fmt_no_nl, i64 0, i64 0), i32 %{})\n",
                                     fmt_id, load_id));
                             }
                             "str" => {
                                 let load_id = self.fresh_id();
-                                ir.push_str(&format!("  %{} = load i8*, i8** %{}\n", load_id, alloc_id));
+                                ir.push_str(&format!(
+                                    "  %{} = load i8*, i8** %{}\n",
+                                    load_id, alloc_id
+                                ));
                                 let call_id = self.fresh_id();
                                 ir.push_str(&format!(
                                     "  %{} = call i32 @printf(i8* %{})\n",
@@ -1453,32 +1585,38 @@ impl CodeGenerator {
                 }
                 crate::ast::expr::StringPart::Expression(expr_str) => {
                     // For now, handle simple function calls like add(result, result)
-                    // This is a simplified implementation - in a full compiler, 
+                    // This is a simplified implementation - in a full compiler,
                     // we'd parse and evaluate the expression properly
                     if expr_str.starts_with("add(") && expr_str.ends_with(')') {
                         // Extract arguments - very basic parsing
-                        let args_str = &expr_str[4..expr_str.len()-1];
+                        let args_str = &expr_str[4..expr_str.len() - 1];
                         let args: Vec<&str> = args_str.split(", ").collect();
-                        
+
                         if args.len() == 2 {
                             // Load both arguments
                             let mut arg_values = Vec::new();
                             for arg in args {
-                                if let Some((_, _, alloc_id)) = self.variables.get(arg.trim()).cloned() {
+                                if let Some((_, _, alloc_id)) =
+                                    self.variables.get(arg.trim()).cloned()
+                                {
                                     let load_id = self.fresh_id();
-                                    ir.push_str(&format!("  %{} = load i32, i32* %{}\n", load_id, alloc_id));
+                                    ir.push_str(&format!(
+                                        "  %{} = load i32, i32* %{}\n",
+                                        load_id, alloc_id
+                                    ));
                                     arg_values.push(format!("i32 %{}", load_id));
                                 }
                             }
-                            
+
                             if arg_values.len() == 2 {
                                 // Call the function
                                 let call_id = self.fresh_id();
                                 ir.push_str(&format!(
                                     "  %{} = call i32 @add({})\n",
-                                    call_id, arg_values.join(", ")
+                                    call_id,
+                                    arg_values.join(", ")
                                 ));
-                                
+
                                 // Print the result
                                 let fmt_id = self.fresh_id();
                                 ir.push_str(&format!("  %{} = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @int_fmt_no_nl, i64 0, i64 0), i32 %{})\n",
@@ -1489,7 +1627,7 @@ impl CodeGenerator {
                 }
             }
         }
-        
+
         // Return empty string since we're printing directly
         String::new()
     }
