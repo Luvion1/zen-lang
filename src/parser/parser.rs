@@ -89,19 +89,42 @@ impl Parser {
     }
 
     fn declaration(&mut self) -> Result<Option<Stmt>, String> {
+        // Check for pub keyword
+        let is_public = if self.check(TokenType::Pub) {
+            self.advance(); // consume 'pub'
+            true
+        } else {
+            false
+        };
+
         if self.check(TokenType::Fn) {
-            return Ok(Some(self.function_declaration()?));
+            return Ok(Some(self.function_declaration_with_visibility(is_public)?));
         }
         if self.check(TokenType::Struct) {
-            return Ok(Some(self.struct_declaration()?));
+            return Ok(Some(self.struct_declaration_with_visibility(is_public)?));
+        }
+        if self.check(TokenType::Const) {
+            return Ok(Some(self.const_declaration_with_visibility(is_public)?));
         }
         if self.check(TokenType::Let) || self.check(TokenType::Mut) {
+            if is_public {
+                return Err("Variables cannot be public".to_string());
+            }
             return Ok(Some(self.variable_declaration()?));
         }
+        
+        if is_public {
+            return Err("Expected function, struct, or const after 'pub'".to_string());
+        }
+        
         self.statement().map(Some)
     }
 
     fn function_declaration(&mut self) -> Result<Stmt, String> {
+        self.function_declaration_with_visibility(false)
+    }
+
+    fn function_declaration_with_visibility(&mut self, is_public: bool) -> Result<Stmt, String> {
         self.consume(TokenType::Fn, "Expected 'fn' keyword")?;
         let name = self.consume_identifier()?;
 
@@ -119,12 +142,16 @@ impl Parser {
             params,
             return_type,
             body,
-            is_public: false, // For now, all functions are private
+            is_public,
             token: self.previous().clone(),
         })
     }
 
     fn struct_declaration(&mut self) -> Result<Stmt, String> {
+        self.struct_declaration_with_visibility(false)
+    }
+
+    fn struct_declaration_with_visibility(&mut self, is_public: bool) -> Result<Stmt, String> {
         self.consume(TokenType::Struct, "Expected 'struct' keyword")?;
         let name = self.consume_identifier()?;
 
@@ -149,7 +176,30 @@ impl Parser {
         Ok(Stmt::StructDecl {
             name,
             fields,
-            is_public: false, // For now, all structs are private
+            is_public,
+            token: self.previous().clone(),
+        })
+    }
+
+    fn const_declaration_with_visibility(&mut self, is_public: bool) -> Result<Stmt, String> {
+        self.consume(TokenType::Const, "Expected 'const' keyword")?;
+        let name = self.consume_identifier()?;
+        
+        let type_annotation = if self.check(TokenType::Colon) {
+            self.advance(); // consume ':'
+            Some(self.parse_type_name()?)
+        } else {
+            None
+        };
+        
+        self.consume(TokenType::Equal, "Expected '=' after const name")?;
+        let initializer = self.expression()?;
+        
+        Ok(Stmt::ConstDecl {
+            name,
+            type_annotation,
+            initializer,
+            is_public,
             token: self.previous().clone(),
         })
     }

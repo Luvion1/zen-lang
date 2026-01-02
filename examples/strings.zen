@@ -10,3 +10,16 @@ pub fn length(s: str) -> i32 {
 }
 
 pub const EMPTY: str = ""
+
+fn main() -> i32 {
+    // Test string functions
+    let str1 = "Hello"
+    let str2 = "World"
+    let result = concat(str1, str2)
+    let len = length(result)
+    
+    println("Concatenated: {result}")
+    println("Length: {len}")
+    
+    return 0
+}
