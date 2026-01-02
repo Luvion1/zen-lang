@@ -29,6 +29,11 @@ jobs:
         with:
           toolchain: ${{ matrix.rust }}
           components: rustfmt, clippy
+      - name: Install LLVM (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y llvm
 
       - name: Clean previous builds
         run: cargo clean
@@ -43,6 +48,7 @@ jobs:
           ./target/release/zen compile examples/arithmetic.zen
           ./target/release/zen compile examples/functions.zen
           ./target/release/zen compile examples/nested_calls.zen
+          ./target/release/zen compile examples/simple_math.zen
 
   fmt:
     name: Format Check
