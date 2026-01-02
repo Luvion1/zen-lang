@@ -1,4 +1,5 @@
 #[cfg(test)]
+#[allow(clippy::module_inception)]
 mod tests {
     use crate::lexer::lexer::Lexer;
     use crate::ownership::OwnershipChecker;
