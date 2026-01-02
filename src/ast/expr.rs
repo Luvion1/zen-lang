@@ -1,10 +1,23 @@
 use crate::token::*;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum StringPart {
     Text(String),
     Variable(String),
     Expression(String), // For function calls like add(result, result)
+}
+
+impl StringPart {
+    pub fn is_static(&self) -> bool {
+        matches!(self, StringPart::Text(_))
+    }
+    
+    pub fn as_text(&self) -> Option<&str> {
+        match self {
+            StringPart::Text(s) => Some(s),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

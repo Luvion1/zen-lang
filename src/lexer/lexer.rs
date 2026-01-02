@@ -27,8 +27,8 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    pub fn tokenize(&mut self) -> Vec<Token> {
-        let mut tokens = Vec::new();
+    pub fn tokenize(&mut self) -> Result<Vec<Token>, Vec<String>> {
+        let mut tokens = Vec::with_capacity(1024); // Pre-allocate for better performance
 
         while self.peek().is_some() {
             self.start_line = self.line;
@@ -37,7 +37,6 @@ impl<'a> Lexer<'a> {
 
             match self.next_token() {
                 Some(token) => {
-                    // Validate token before adding
                     if self.validate_token(&token) {
                         tokens.push(token);
                     }
@@ -48,15 +47,11 @@ impl<'a> Lexer<'a> {
 
         tokens.push(Token::eof(self.line, self.column));
 
-        // Report any lexical errors
-        if !self.errors.is_empty() {
-            eprintln!("Lexical warnings/errors:");
-            for error in &self.errors {
-                eprintln!("  {}", error);
-            }
+        if self.errors.is_empty() {
+            Ok(tokens)
+        } else {
+            Err(self.errors.clone())
         }
-
-        tokens
     }
 
     fn validate_token(&mut self, token: &Token) -> bool {
@@ -768,7 +763,7 @@ mod tests {
         let code = "let mut fn return if else for while";
         let lexer = Lexer::new(code);
         let mut l = lexer;
-        let tokens = l.tokenize();
+        let tokens = l.tokenize().unwrap();
 
         assert_eq!(tokens[0].kind, TokenType::Let);
         assert_eq!(tokens[1].kind, TokenType::Mut);
@@ -785,7 +780,7 @@ mod tests {
         let code = "+ - * / % ^ < > <= >= == != = ! && ||";
         let lexer = Lexer::new(code);
         let mut l = lexer;
-        let tokens = l.tokenize();
+        let tokens = l.tokenize().unwrap();
 
         assert_eq!(tokens[0].kind, TokenType::Plus);
         assert_eq!(tokens[1].kind, TokenType::Minus);
@@ -800,7 +795,7 @@ mod tests {
         let code = "<-";
         let lexer = Lexer::new(code);
         let mut l = lexer;
-        let tokens = l.tokenize();
+        let tokens = l.tokenize().unwrap();
 
         assert_eq!(tokens[0].kind, TokenType::ArrowLeft);
     }
@@ -810,7 +805,7 @@ mod tests {
         let code = "42 3.14 \"hello\" 'c'";
         let lexer = Lexer::new(code);
         let mut l = lexer;
-        let tokens = l.tokenize();
+        let tokens = l.tokenize().unwrap();
 
         assert_eq!(tokens[0].kind, TokenType::IntegerLiteral);
         assert_eq!(tokens[0].lexeme, "42");
@@ -827,7 +822,7 @@ mod tests {
         let code = "my_variable function_name _private";
         let lexer = Lexer::new(code);
         let mut l = lexer;
-        let tokens = l.tokenize();
+        let tokens = l.tokenize().unwrap();
 
         assert_eq!(tokens[0].kind, TokenType::Identifier);
         assert_eq!(tokens[0].lexeme, "my_variable");
@@ -842,7 +837,7 @@ mod tests {
         let code = "let x = 10 // this is a comment\nlet y = 20";
         let lexer = Lexer::new(code);
         let mut l = lexer;
-        let tokens = l.tokenize();
+        let tokens = l.tokenize().unwrap();
 
         assert_eq!(tokens[0].kind, TokenType::Let);
         assert_eq!(tokens[1].kind, TokenType::Identifier);
@@ -856,7 +851,7 @@ mod tests {
         let code = "i32 f64 bool str char void";
         let lexer = Lexer::new(code);
         let mut l = lexer;
-        let tokens = l.tokenize();
+        let tokens = l.tokenize().unwrap();
 
         assert_eq!(tokens[0].kind, TokenType::Int32);
         assert_eq!(tokens[1].kind, TokenType::Float64);

@@ -6,7 +6,7 @@ mod tests {
 
     fn parse_code(code: &str) -> crate::ast::program::Program {
         let mut lexer = Lexer::new(code);
-        let tokens = lexer.tokenize();
+        let tokens = lexer.tokenize().unwrap();
         let mut parser = Parser::new(tokens);
         parser.parse().unwrap()
     }

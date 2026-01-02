@@ -25,8 +25,10 @@ impl Parser {
 
     pub fn parse(&mut self) -> Result<Program, String> {
         let mut program = Program::new();
+        let mut error_count = 0;
+        const MAX_ERRORS: usize = 10;
 
-        while !self.is_at_end() {
+        while !self.is_at_end() && error_count < MAX_ERRORS {
             if self.panic_mode {
                 self.synchronize();
             }
@@ -36,17 +38,29 @@ impl Parser {
                 Ok(None) => continue,
                 Err(e) => {
                     self.report_error(e);
-                    self.synchronize();
+                    error_count += 1;
+                    if error_count < MAX_ERRORS {
+                        self.synchronize();
+                    }
                 }
             }
         }
 
         if self.had_error {
-            let error_summary = format!(
-                "Parsing failed with {} errors:\n{}",
-                self.errors.len(),
-                self.errors.join("\n")
-            );
+            let error_summary = if error_count >= MAX_ERRORS {
+                format!(
+                    "Parsing failed with {} errors (stopped after {} errors):\n{}",
+                    self.errors.len(),
+                    MAX_ERRORS,
+                    self.errors.join("\n")
+                )
+            } else {
+                format!(
+                    "Parsing failed with {} errors:\n{}",
+                    self.errors.len(),
+                    self.errors.join("\n")
+                )
+            };
             Err(error_summary)
         } else {
             Ok(program)
@@ -1096,7 +1110,7 @@ mod tests {
     fn test_simple_function() {
         let code = "fn main() -> i32 { return 0 }";
         let mut lexer = crate::lexer::lexer::Lexer::new(code);
-        let mut parser = Parser::new(lexer.tokenize());
+        let mut parser = Parser::new(lexer.tokenize().unwrap());
 
         let result = parser.parse();
         assert!(result.is_ok(), "Parsing should succeed");
@@ -1109,7 +1123,7 @@ mod tests {
     fn test_function_with_params() {
         let code = "fn add(a: i32, b: i32) -> i32 { a + b }";
         let mut lexer = crate::lexer::lexer::Lexer::new(code);
-        let mut parser = Parser::new(lexer.tokenize());
+        let mut parser = Parser::new(lexer.tokenize().unwrap());
 
         let result = parser.parse();
         assert!(
@@ -1122,7 +1136,7 @@ mod tests {
     fn test_variable_declaration() {
         let code = "let x = 10";
         let mut lexer = crate::lexer::lexer::Lexer::new(code);
-        let mut parser = Parser::new(lexer.tokenize());
+        let mut parser = Parser::new(lexer.tokenize().unwrap());
 
         let result = parser.parse();
         assert!(
@@ -1135,7 +1149,7 @@ mod tests {
     fn test_mutable_variable() {
         let code = "let mut counter = 0";
         let mut lexer = crate::lexer::lexer::Lexer::new(code);
-        let mut parser = Parser::new(lexer.tokenize());
+        let mut parser = Parser::new(lexer.tokenize().unwrap());
 
         let result = parser.parse();
         assert!(result.is_ok(), "Parsing mutable variable should succeed");
@@ -1145,7 +1159,7 @@ mod tests {
     fn test_variable_with_type() {
         let code = "let age: i32 = 25";
         let mut lexer = crate::lexer::lexer::Lexer::new(code);
-        let mut parser = Parser::new(lexer.tokenize());
+        let mut parser = Parser::new(lexer.tokenize().unwrap());
 
         let result = parser.parse();
         assert!(result.is_ok(), "Parsing variable with type should succeed");
@@ -1155,7 +1169,7 @@ mod tests {
     fn test_if_statement() {
         let code = "if x > 5 { println(\"Big\") }";
         let mut lexer = crate::lexer::lexer::Lexer::new(code);
-        let mut parser = Parser::new(lexer.tokenize());
+        let mut parser = Parser::new(lexer.tokenize().unwrap());
 
         let result = parser.parse();
         assert!(result.is_ok(), "Parsing if statement should succeed");
@@ -1165,7 +1179,7 @@ mod tests {
     fn test_if_else_statement() {
         let code = "if x > 5 { println(\"Big\") } else { println(\"Small\") }";
         let mut lexer = crate::lexer::lexer::Lexer::new(code);
-        let mut parser = Parser::new(lexer.tokenize());
+        let mut parser = Parser::new(lexer.tokenize().unwrap());
 
         let result = parser.parse();
         assert!(result.is_ok(), "Parsing if-else statement should succeed");
@@ -1175,7 +1189,7 @@ mod tests {
     fn test_while_loop() {
         let code = "while counter < 10 { counter = counter + 1 }";
         let mut lexer = crate::lexer::lexer::Lexer::new(code);
-        let mut parser = Parser::new(lexer.tokenize());
+        let mut parser = Parser::new(lexer.tokenize().unwrap());
 
         let result = parser.parse();
         assert!(result.is_ok(), "Parsing while loop should succeed");
@@ -1185,7 +1199,7 @@ mod tests {
     fn test_c_style_for_loop() {
         let code = "for (i = 0; i < 10; i = i + 1) { println(i) }";
         let mut lexer = crate::lexer::lexer::Lexer::new(code);
-        let mut parser = Parser::new(lexer.tokenize());
+        let mut parser = Parser::new(lexer.tokenize().unwrap());
 
         let result = parser.parse();
         assert!(result.is_ok(), "Parsing C-style for loop should succeed");
@@ -1195,7 +1209,7 @@ mod tests {
     fn test_match_statement() {
         let code = "match value { 1 => println(\"One\"), _ => println(\"Other\") }";
         let mut lexer = crate::lexer::lexer::Lexer::new(code);
-        let mut parser = Parser::new(lexer.tokenize());
+        let mut parser = Parser::new(lexer.tokenize().unwrap());
 
         let result = parser.parse();
         assert!(result.is_ok(), "Parsing match statement should succeed");
@@ -1205,7 +1219,7 @@ mod tests {
     fn test_function_call() {
         let code = "println(\"Hello\")";
         let mut lexer = crate::lexer::lexer::Lexer::new(code);
-        let mut parser = Parser::new(lexer.tokenize());
+        let mut parser = Parser::new(lexer.tokenize().unwrap());
 
         let result = parser.parse();
         assert!(result.is_ok(), "Parsing function call should succeed");
@@ -1215,7 +1229,7 @@ mod tests {
     fn test_assignment() {
         let code = "x = 10";
         let mut lexer = crate::lexer::lexer::Lexer::new(code);
-        let mut parser = Parser::new(lexer.tokenize());
+        let mut parser = Parser::new(lexer.tokenize().unwrap());
 
         let result = parser.parse();
         assert!(result.is_ok(), "Parsing assignment should succeed");
@@ -1225,7 +1239,7 @@ mod tests {
     fn test_binary_expressions() {
         let code = "x = 10 + 20 * 3";
         let mut lexer = crate::lexer::lexer::Lexer::new(code);
-        let mut parser = Parser::new(lexer.tokenize());
+        let mut parser = Parser::new(lexer.tokenize().unwrap());
 
         let result = parser.parse();
         assert!(result.is_ok(), "Parsing binary expressions should succeed");
@@ -1235,7 +1249,7 @@ mod tests {
     fn test_comparison_expressions() {
         let code = "x > 5 && y < 10";
         let mut lexer = crate::lexer::lexer::Lexer::new(code);
-        let mut parser = Parser::new(lexer.tokenize());
+        let mut parser = Parser::new(lexer.tokenize().unwrap());
 
         let result = parser.parse();
         assert!(
@@ -1258,7 +1272,7 @@ fn main() -> i32 {
 }
 "#;
         let mut lexer = crate::lexer::lexer::Lexer::new(code);
-        let mut parser = Parser::new(lexer.tokenize());
+        let mut parser = Parser::new(lexer.tokenize().unwrap());
 
         let result = parser.parse();
         assert!(result.is_ok(), "Parsing complex program should work");
@@ -1272,7 +1286,7 @@ fn main() -> i32 {
         let code =
             "fn add(a: i32, b: i32) -> i32 { a + b } fn main() -> i32 { let x = 10 return 0 }";
         let mut lexer = crate::lexer::lexer::Lexer::new(code);
-        let mut parser = Parser::new(lexer.tokenize());
+        let mut parser = Parser::new(lexer.tokenize().unwrap());
 
         let result = parser.parse();
         assert!(result.is_ok());
@@ -1297,7 +1311,7 @@ fn main() -> i32 {
 }
 "#;
         let mut lexer = crate::lexer::lexer::Lexer::new(code);
-        let mut parser = Parser::new(lexer.tokenize());
+        let mut parser = Parser::new(lexer.tokenize().unwrap());
 
         let result = parser.parse();
         assert!(result.is_ok(), "Parsing single else if should succeed");
@@ -1343,7 +1357,7 @@ fn main() -> i32 {
 }
 "#;
         let mut lexer = crate::lexer::lexer::Lexer::new(code);
-        let mut parser = Parser::new(lexer.tokenize());
+        let mut parser = Parser::new(lexer.tokenize().unwrap());
 
         let result = parser.parse();
         assert!(result.is_ok(), "Parsing multiple else if should succeed");
@@ -1388,7 +1402,7 @@ fn main() -> i32 {
 }
 "#;
         let mut lexer = crate::lexer::lexer::Lexer::new(code);
-        let mut parser = Parser::new(lexer.tokenize());
+        let mut parser = Parser::new(lexer.tokenize().unwrap());
 
         let result = parser.parse();
         assert!(
@@ -1443,7 +1457,7 @@ fn main() -> i32 {
 }
 "#;
         let mut lexer = crate::lexer::lexer::Lexer::new(code);
-        let mut parser = Parser::new(lexer.tokenize());
+        let mut parser = Parser::new(lexer.tokenize().unwrap());
 
         let result = parser.parse();
         assert!(result.is_ok(), "Parsing nested else if should succeed");

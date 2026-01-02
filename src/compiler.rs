@@ -10,6 +10,25 @@ use crate::typechecker::typechecker::TypeChecker;
 const LLC_CMD: &str = "llc";
 const GCC_CMD: &str = "gcc";
 
+// RAII cleanup guard for temporary files
+struct CleanupGuard {
+    files: Vec<PathBuf>,
+}
+
+impl CleanupGuard {
+    fn new(files: Vec<PathBuf>) -> Self {
+        Self { files }
+    }
+}
+
+impl Drop for CleanupGuard {
+    fn drop(&mut self) {
+        for file in &self.files {
+            let _ = std::fs::remove_file(file);
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct CompilationStats {
     pub tokens_count: usize,
@@ -61,7 +80,8 @@ impl Compiler {
         let total_start = Instant::now();
 
         // Validate input file
-        if !std::path::Path::new(input).exists() {
+        let input_path = std::path::Path::new(input);
+        if !input_path.exists() {
             anyhow::bail!("Input file '{}' does not exist", input);
         }
 
@@ -69,13 +89,21 @@ impl Compiler {
             .map_err(|e| anyhow::anyhow!("Failed to read input file '{}': {}", input, e))?;
 
         if self.verbose {
-            println!("Compiling: {}", input);
+            println!("Compiling: {} ({} bytes)", input, source.len());
         }
 
         // Lexical Analysis
         let lexing_start = Instant::now();
         let mut lexer = Lexer::new(&source);
-        let tokens = lexer.tokenize();
+        let tokens = match lexer.tokenize() {
+            Ok(tokens) => tokens,
+            Err(errors) => {
+                for error in &errors {
+                    eprintln!("Lexical error: {}", error);
+                }
+                anyhow::bail!("Lexical analysis failed with {} errors", errors.len());
+            }
+        };
         let lexing_time = lexing_start.elapsed();
 
         if self.verbose {
@@ -126,17 +154,21 @@ impl Compiler {
         let codegen_time = codegen_start.elapsed();
 
         // Prepare paths
-        let input_path = PathBuf::from(input);
         let output_path = if let Some(out) = output {
-            PathBuf::from(out)
+            std::path::PathBuf::from(out)
         } else {
             input_path.with_extension("")
         };
 
+        // Use more unique temporary file names
         let temp_dir = std::env::temp_dir();
         let process_id = std::process::id();
-        let ll_path = temp_dir.join(format!("zen_temp_{}.ll", process_id));
-        let obj_path = temp_dir.join(format!("zen_temp_{}.o", process_id));
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos();
+        let ll_path = temp_dir.join(format!("zen_{}_{}.ll", process_id, timestamp));
+        let obj_path = temp_dir.join(format!("zen_{}_{}.o", process_id, timestamp));
 
         if self.verbose {
             println!("Compiling {}...", input);
@@ -145,6 +177,9 @@ impl Compiler {
         // Write LLVM IR
         std::fs::write(&ll_path, &llvm_ir)
             .map_err(|e| anyhow::anyhow!("Failed to write LLVM IR: {}", e))?;
+
+        // Ensure cleanup happens even on error
+        let _cleanup = CleanupGuard::new(vec![ll_path.clone(), obj_path.clone()]);
 
         // Debug: Also write to a persistent file for inspection
         if self.verbose {
@@ -157,6 +192,7 @@ impl Compiler {
         let llc_start = Instant::now();
         let llc_result = std::process::Command::new(LLC_CMD)
             .arg("-filetype=obj")
+            .arg("-O2") // Add optimization
             .arg("-o")
             .arg(&obj_path)
             .arg(&ll_path)
@@ -166,7 +202,6 @@ impl Compiler {
 
         if !llc_result.status.success() {
             let stderr = std::str::from_utf8(&llc_result.stderr).unwrap_or("Invalid UTF-8");
-            let _ = std::fs::remove_file(&ll_path);
             anyhow::bail!("llc compilation failed: {}", stderr);
         }
 
@@ -174,6 +209,7 @@ impl Compiler {
         let linking_start = Instant::now();
         let linker_result = std::process::Command::new(GCC_CMD)
             .arg("-no-pie")
+            .arg("-O2") // Add optimization
             .arg(&obj_path)
             .arg("-o")
             .arg(&output_path)
@@ -181,10 +217,6 @@ impl Compiler {
             .output()
             .map_err(|e| anyhow::anyhow!("Failed to execute linker: {}", e))?;
         let linking_time = linking_start.elapsed();
-
-        // Cleanup
-        let _ = std::fs::remove_file(&ll_path);
-        let _ = std::fs::remove_file(&obj_path);
 
         let total_time = total_start.elapsed();
 
@@ -297,7 +329,16 @@ impl Compiler {
 
         let tokenizing_start = Instant::now();
         let mut lexer = Lexer::new(&source);
-        let tokens = lexer.tokenize();
+        let tokens = match lexer.tokenize() {
+            Ok(toks) => toks,
+            Err(errs) => {
+                for err in &errs {
+                    eprintln!("Lexical error: {}", err);
+                }
+                eprintln!("Tokenization failed");
+                return Ok(());
+            }
+        };
         let tokenizing_time = tokenizing_start.elapsed();
 
         if self.verbose {
