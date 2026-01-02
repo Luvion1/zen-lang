@@ -1,0 +1,15 @@
+// Mutable borrowing example
+fn main() -> i32 {
+    let mut x = 42
+    
+    // Mutable borrow
+    let y = &mut x
+    *y = 100
+    
+    println("Modified value: {x}")
+    
+    // Only one mutable borrow allowed at a time
+    // let z = &mut x  // This would cause an error
+    
+    return 0
+}

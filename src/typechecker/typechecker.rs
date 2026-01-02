@@ -171,7 +171,7 @@ impl TypeChecker {
                 }
             }
             
-            Stmt::FunctionDecl { name, params, body, .. } => {
+            Stmt::FunctionDecl { name: _, params, body, .. } => {
                 // Enter function scope
                 self.scope_level += 1;
                 

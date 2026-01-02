@@ -1,0 +1,41 @@
+// Test struct and array features
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+struct Person {
+    name: str,
+    age: i32,
+    position: Point,
+}
+
+fn calculate_distance(p1: Point, p2: Point) -> i32 {
+    let dx = p1.x - p2.x
+    let dy = p1.y - p2.y
+    return dx * dx + dy * dy
+}
+
+fn main() -> i32 {
+    // Create struct instances
+    let origin = Point { x: 0, y: 0 }
+    let point1 = Point { x: 3, y: 4 }
+
+    // Test field access
+    let distance = calculate_distance(origin, point1)
+
+    // Test struct with nested structs
+    let person = Person {
+        name: "Alice",
+        age: 25,
+        position: point1,
+    }
+
+    // Test field access on nested struct
+    let person_x = person.position.x
+
+    println("Distance: {distance}")
+    println("Person X: {person_x}")
+
+    return 0
+}

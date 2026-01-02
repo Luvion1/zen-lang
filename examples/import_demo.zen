@@ -1,0 +1,24 @@
+// Main program demonstrating various import patterns
+
+use math;                    // Import entire module
+use strings::concat;         // Import specific function
+use math::PI as MATH_PI;     // Import with alias
+use strings::*;              // Wildcard import
+
+fn main() -> i32 {
+    // Use imported functions
+    let result = math::add(10, 20)
+    let product = math::multiply(5, 6)
+    
+    // Use specific import
+    let text = concat("Hello", "World")
+    
+    // Use aliased import
+    println("PI value: {MATH_PI}")
+    
+    // Use wildcard import
+    let len = length("test")
+    
+    println("Result: {result}, Product: {product}")
+    return 0
+}

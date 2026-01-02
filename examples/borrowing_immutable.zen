@@ -1,0 +1,15 @@
+// Borrowing examples
+fn main() -> i32 {
+    let x = 42
+    
+    // Immutable borrow
+    let y = &x
+    println("Original: {x}")
+    println("Borrowed: {*y}")
+    
+    // Multiple immutable borrows are allowed
+    let z = &x
+    println("Another borrow: {*z}")
+    
+    return 0
+}

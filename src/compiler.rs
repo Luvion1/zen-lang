@@ -3,6 +3,7 @@ use std::time::Instant;
 
 use crate::codegen::codegen::CodeGenerator;
 use crate::lexer::lexer::Lexer;
+use crate::ownership::OwnershipChecker;
 use crate::parser::parser::Parser;
 use crate::typechecker::typechecker::TypeChecker;
 
@@ -16,6 +17,7 @@ pub struct CompilationStats {
     pub lexing_time: std::time::Duration,
     pub parsing_time: std::time::Duration,
     pub type_checking_time: std::time::Duration,
+    pub ownership_time: std::time::Duration,
     pub codegen_time: std::time::Duration,
     pub llc_time: std::time::Duration,
     pub linking_time: std::time::Duration,
@@ -105,6 +107,18 @@ impl Compiler {
             println!("success: Type checking passed!");
         }
 
+        // Ownership Checking
+        let ownership_start = Instant::now();
+        let mut ownership_checker = OwnershipChecker::new();
+        ownership_checker
+            .check(&program)
+            .map_err(|e| anyhow::anyhow!("Ownership error: {}", e))?;
+        let ownership_time = ownership_start.elapsed();
+
+        if self.verbose {
+            println!("success: Ownership checking passed!");
+        }
+
         // Code Generation
         let codegen_start = Instant::now();
         let mut codegen = CodeGenerator::new();
@@ -181,6 +195,7 @@ impl Compiler {
             lexing_time,
             parsing_time,
             type_checking_time,
+            ownership_time,
             codegen_time,
             llc_time,
             linking_time,

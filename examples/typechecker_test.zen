@@ -1,0 +1,97 @@
+// Comprehensive TypeChecker Test
+// Testing all new features: structs, arrays, type inference, complex expressions
+
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+struct Person {
+    name: str,
+    age: i32,
+    position: Point,
+}
+
+struct Rectangle {
+    width: f64,
+    height: f64,
+}
+
+fn calculate_area(rect: Rectangle) -> f64 {
+    return rect.width * rect.height
+}
+
+fn create_point(x_val: i32, y_val: i32) -> Point {
+    let p = Point { x: x_val, y: y_val }
+    return p
+}
+
+fn distance(p1: Point, p2: Point) -> f64 {
+    let dx = p1.x - p2.x
+    let dy = p1.y - p2.y
+    let dist_squared = dx * dx + dy * dy
+    return dist_squared as f64  // Type coercion from i32 to f64
+}
+
+fn test_type_inference() -> i32 {
+    // Test arithmetic type promotion
+    let a: i32 = 10
+    let b: i64 = 20
+    let c = a + (b as i32)  // Should work with explicit cast
+
+    // Test boolean operations
+    let flag1 = true
+    let flag2 = false
+    let result = flag1 && !flag2
+
+    // Test string operations
+    let message = "Hello"
+
+    // Test complex expressions
+    let complex = (a * 2) + (c / 2) - 5
+
+    if result {
+        return complex
+    } else {
+        return 0
+    }
+}
+
+fn main() -> i32 {
+    // Test struct creation and field access
+    let origin = Point { x: 0, y: 0 }
+    let target = create_point(3, 4)
+
+    // Test field access
+    let x_pos = target.x
+    let y_pos = target.y
+
+    // Test function calls with structs
+    let dist = distance(origin, target)
+
+    // Test nested struct
+    let person = Person {
+        name: "Alice",
+        age: 25,
+        position: target,
+    }
+
+    // Test field access on nested struct
+    let person_x = person.position.x
+
+    // Test rectangle and floating point
+    let rect = Rectangle { width: 10.5, height: 5.2 }
+    let area = calculate_area(rect)
+
+    // Test type inference
+    let inferred_result = test_type_inference()
+
+    // Print results
+    println("Point created: ({}, {})", x_pos, y_pos)
+    println("Distance: {}", dist as i32)
+    println("Person X: {}", person_x)
+    println("Rectangle area: {}", area as i32)
+    println("Type inference result: {}", inferred_result)
+
+    return 0
+}

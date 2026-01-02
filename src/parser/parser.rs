@@ -92,6 +92,9 @@ impl Parser {
         if self.check(TokenType::Fn) {
             return Ok(Some(self.function_declaration()?));
         }
+        if self.check(TokenType::Struct) {
+            return Ok(Some(self.struct_declaration()?));
+        }
         if self.check(TokenType::Let) || self.check(TokenType::Mut) {
             return Ok(Some(self.variable_declaration()?));
         }
@@ -116,6 +119,37 @@ impl Parser {
             params,
             return_type,
             body,
+            is_public: false, // For now, all functions are private
+            token: self.previous().clone(),
+        })
+    }
+
+    fn struct_declaration(&mut self) -> Result<Stmt, String> {
+        self.consume(TokenType::Struct, "Expected 'struct' keyword")?;
+        let name = self.consume_identifier()?;
+
+        self.consume(TokenType::LeftBrace, "Expected '{' after struct name")?;
+
+        let mut fields = Vec::new();
+
+        while !self.check(TokenType::RightBrace) && !self.is_at_end() {
+            let field_name = self.consume_identifier()?;
+            self.consume(TokenType::Colon, "Expected ':' after field name")?;
+            let field_type = self.type_annotation()?;
+
+            fields.push((field_name, field_type));
+
+            if !self.match_token(TokenType::Comma) && !self.check(TokenType::RightBrace) {
+                return Err("Expected ',' or '}' after field".to_string());
+            }
+        }
+
+        self.consume(TokenType::RightBrace, "Expected '}' after struct fields")?;
+
+        Ok(Stmt::StructDecl {
+            name,
+            fields,
+            is_public: false, // For now, all structs are private
             token: self.previous().clone(),
         })
     }
@@ -168,8 +202,41 @@ impl Parser {
     }
 
     fn type_annotation(&mut self) -> Result<String, String> {
+        // Check for array type: [ElementType; Size] or [ElementType]
+        if self.match_token(TokenType::LeftBracket) {
+            // Parse element type - can be any valid type
+            let element_type = self.parse_type_name()?;
+            let mut array_spec = format!("[{}", element_type);
+
+            if self.match_token(TokenType::Semicolon) {
+                let size_token = self.consume_identifier()?; // Get the integer literal as string
+                array_spec.push_str(&format!("; {}", size_token));
+            }
+
+            self.consume(TokenType::RightBracket, "Expected ']' after array type")?;
+            return Ok(array_spec);
+        }
+
+        // Regular type identifier
+        self.parse_type_name()
+    }
+
+    fn parse_type_name(&mut self) -> Result<String, String> {
         let token = self.advance();
-        Ok(token.lexeme.clone())
+
+        // Handle built-in types
+        match token.kind {
+            TokenType::Int8 | TokenType::Int16 | TokenType::Int32 | TokenType::Int64 |
+            TokenType::UInt8 | TokenType::UInt16 | TokenType::UInt32 | TokenType::UInt64 |
+            TokenType::Float32 | TokenType::Float64 | TokenType::Bool |
+            TokenType::Str | TokenType::Char | TokenType::Void => {
+                Ok(token.lexeme.clone())
+            }
+            TokenType::Identifier => {
+                Ok(token.lexeme.clone())
+            }
+            _ => Err(format!("Expected type name, found {:?}", token.kind)),
+        }
     }
 
     fn statement(&mut self) -> Result<Stmt, String> {
@@ -192,6 +259,9 @@ impl Parser {
         }
         if self.check(TokenType::Match) {
             return self.match_statement();
+        }
+        if self.check(TokenType::Use) {
+            return self.use_statement();
         }
 
         if self.check(TokenType::Let) {
@@ -533,45 +603,78 @@ impl Parser {
         if self.match_token(TokenType::Not)
             || self.match_token(TokenType::Minus)
             || self.match_token(TokenType::ArrowLeft)
+            || self.match_token(TokenType::Ampersand)
+            || self.match_token(TokenType::AmpersandMut)
         {
             let op = self.previous().clone();
             let right = self.unary()?;
 
-            if op.kind == TokenType::ArrowLeft {
-                return Ok(Expr::OwnershipTransfer {
+            match op.kind {
+                TokenType::ArrowLeft => Ok(Expr::OwnershipTransfer {
                     expr: Box::new(right),
                     token: op,
-                });
+                }),
+                TokenType::Ampersand => Ok(Expr::Borrow {
+                    expr: Box::new(right),
+                    is_mutable: false,
+                    token: op,
+                }),
+                TokenType::AmpersandMut => Ok(Expr::Borrow {
+                    expr: Box::new(right),
+                    is_mutable: true,
+                    token: op,
+                }),
+                _ => Ok(Expr::UnaryOp {
+                    op,
+                    operand: Box::new(right),
+                }),
             }
-
-            return Ok(Expr::UnaryOp {
-                op,
-                operand: Box::new(right),
-            });
+        } else {
+            self.call()
         }
-
-        self.call()
     }
 
     fn call(&mut self) -> Result<Expr, String> {
-        let expr = self.primary()?;
+        let mut expr = self.primary()?;
 
-        if self.match_token(TokenType::LeftParen) {
-            let mut args = Vec::new();
+        loop {
+            if self.match_token(TokenType::LeftParen) {
+                // Function call: expr(args)
+                let mut args = Vec::new();
 
-            if !self.check(TokenType::RightParen) {
-                args.push(self.expression()?);
-                while self.match_token(TokenType::Comma) {
+                if !self.check(TokenType::RightParen) {
                     args.push(self.expression()?);
+                    while self.match_token(TokenType::Comma) {
+                        args.push(self.expression()?);
+                    }
                 }
-            }
 
-            self.consume(TokenType::RightParen, "Expected ')' after arguments")?;
-            return Ok(Expr::Call {
-                callee: Box::new(expr),
-                args,
-                token: self.previous().clone(),
-            });
+                self.consume(TokenType::RightParen, "Expected ')' after arguments")?;
+                expr = Expr::Call {
+                    callee: Box::new(expr),
+                    args,
+                    token: self.previous().clone(),
+                };
+            } else if self.match_token(TokenType::LeftBracket) {
+                // Array access: expr[index]
+                let index = self.expression()?;
+                self.consume(TokenType::RightBracket, "Expected ']' after array index")?;
+                expr = Expr::ArrayAccess {
+                    array: Box::new(expr),
+                    index: Box::new(index),
+                    token: self.previous().clone(),
+                };
+            } else if self.match_token(TokenType::Dot) {
+                // Member access: expr.field
+                let field = self.consume_identifier()?;
+                expr = Expr::FieldAccess {
+                    object: Box::new(expr),
+                    field,
+                    token: self.previous().clone(),
+                };
+            } else {
+                break;
+            }
         }
 
         Ok(expr)
@@ -618,14 +721,81 @@ impl Parser {
         }
 
         if self.check(TokenType::Identifier) {
-            let name = self.advance().lexeme.clone();
+            let token = self.advance();
+            let name = token.lexeme.clone();
+
+            // Check for module access: module::item
+            if self.match_token(TokenType::DoubleColon) {
+                let item_name = self.consume_identifier()?;
+                return Ok(Expr::ModuleAccess {
+                    module: name,
+                    item: item_name,
+                    token,
+                });
+            }
+
+            // Check for struct literal: StructName { ... }
+            // Use lookahead to distinguish from other uses of '{'
+            if self.check(TokenType::LeftBrace) && self.is_struct_literal_context() {
+                self.advance(); // consume '{'
+                let fields = self.struct_literal_fields()?;
+                self.consume(TokenType::RightBrace, "Expected '}' after struct literal fields")?;
+                return Ok(Expr::StructLiteral {
+                    struct_name: name,
+                    fields,
+                    token,
+                });
+            }
+
             return Ok(Expr::Identifier {
                 name,
-                token: self.previous().clone(),
+                token,
             });
         }
 
         Err(format!("Unexpected token: {:?}", self.peek()))
+    }
+
+    fn is_struct_literal_context(&mut self) -> bool {
+        // Look ahead to see if this looks like a struct literal
+        // Struct literal: { field: value, ... } or { }
+        let lookahead = 1;
+        
+        // Skip whitespace/comments if any (simplified check)
+        while lookahead < self.tokens.len() - self.current {
+            let token = &self.tokens[self.current + lookahead];
+            match token.kind {
+                TokenType::RightBrace => return true, // Empty struct literal
+                TokenType::Identifier => {
+                    // Check if followed by ':' (field: value pattern)
+                    if lookahead + 1 < self.tokens.len() - self.current {
+                        let next_token = &self.tokens[self.current + lookahead + 1];
+                        return next_token.kind == TokenType::Colon;
+                    }
+                    return false;
+                }
+                _ => return false, // Not a struct literal pattern
+            }
+        }
+        false
+    }
+
+    fn struct_literal_fields(&mut self) -> Result<Vec<(String, Expr)>, String> {
+        let mut fields = Vec::new();
+
+        while !self.check(TokenType::RightBrace) && !self.is_at_end() {
+            let field_name = self.consume_identifier()?;
+            self.consume(TokenType::Colon, "Expected ':' after field name")?;
+            let field_value = self.expression()?;
+
+            fields.push((field_name, field_value));
+
+            if !self.match_token(TokenType::Comma) && !self.check(TokenType::RightBrace) {
+                return Err("Expected ',' or '}' after field".to_string());
+            }
+        }
+
+        Ok(fields)
     }
 
     fn match_number(&mut self) -> Option<Expr> {
@@ -817,6 +987,37 @@ impl Parser {
 
     fn previous(&self) -> Token {
         self.tokens[self.current - 1].clone()
+    }
+
+    fn use_statement(&mut self) -> Result<Stmt, String> {
+        let token = self.advance(); // consume 'use'
+        let mut path = Vec::new();
+
+        // Parse path like: crate::module::item or module::*
+        loop {
+            if self.check(TokenType::Identifier) || self.check(TokenType::Crate) || self.check(TokenType::Super) || self.check(TokenType::Self_) {
+                path.push(self.advance().lexeme);
+            } else if self.check(TokenType::Star) {
+                // Handle wildcard import: use module::*;
+                path.push(self.advance().lexeme);
+                break;
+            } else {
+                return Err(format!("Expected identifier or '*' in use path, got {:?}", self.peek()));
+            }
+
+            if !self.match_token(TokenType::DoubleColon) {
+                break;
+            }
+        }
+
+        let alias = if self.match_token(TokenType::As) {
+            Some(self.consume_identifier()?)
+        } else {
+            None
+        };
+
+        self.consume(TokenType::Semicolon, "Expected ';' after use statement")?;
+        Ok(Stmt::Use { path, alias, token })
     }
 }
 

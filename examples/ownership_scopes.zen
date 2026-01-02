@@ -1,0 +1,15 @@
+// Scope-based ownership example
+fn main() -> i32 {
+    let x = 42
+    
+    {
+        let y = &x  // Borrow x in inner scope
+        println("Borrowed in scope: {*y}")
+    }  // y goes out of scope, borrow ends
+    
+    // Now we can move x since the borrow ended
+    let z = <-x
+    println("Moved value: {z}")
+    
+    return 0
+}

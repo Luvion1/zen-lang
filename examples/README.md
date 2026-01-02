@@ -51,16 +51,23 @@ String and character operations:
 - String type inference
 - Multiple string manipulations
 
+### 8. **string_interpolation.zen** - String Interpolation
+Modern string formatting with variable embedding:
+- Variable interpolation: `"Hello, {name}!"`
+- Expression interpolation: `"Sum: {add(x, y)}"`
+- Mixed text and variables
+- Function calls in strings
+
 ## Advanced Examples
 
-### 8. **complex_expressions.zen** - Complex Expressions
+### 9. **complex_expressions.zen** - Complex Expressions
 Advanced expression handling:
 - Nested arithmetic expressions
 - Complex function call chains
 - Boolean expression combinations
 - Function calls in conditions
 
-### 9. **algorithms.zen** - Algorithms and Data Processing
+### 11. **algorithms.zen** - Algorithms and Data Processing
 Real-world algorithms implementation:
 - Fibonacci sequence (recursive)
 - Greatest Common Divisor (Euclidean algorithm)
@@ -68,7 +75,7 @@ Real-world algorithms implementation:
 - Range summation
 - Factorial with loops
 
-### 10. **pattern_matching.zen** - Pattern Matching
+### 12. **pattern_matching.zen** - Pattern Matching
 Advanced pattern matching and conditional logic:
 - Match expressions with multiple cases
 - Conditional grading system
@@ -77,14 +84,14 @@ Advanced pattern matching and conditional logic:
 
 ## Application Examples
 
-### 11. **guessing_game.zen** - Number Guessing Game
+### 13. **guessing_game.zen** - Number Guessing Game
 Interactive game simulation demonstrating:
 - Game logic implementation
 - Distance calculation
 - Feedback system
 - Multiple function interactions
 
-### 12. **calculator.zen** - Scientific Calculator
+### 14. **calculator.zen** - Scientific Calculator
 Full-featured calculator with:
 - Basic arithmetic operations (+, -, *, /)
 - Power calculations
@@ -126,6 +133,6 @@ All examples compile to native machine code via LLVM, providing:
 These examples showcase Zen v0.0.1 capabilities. Future versions will add:
 - Structs and methods
 - Arrays and collections
-- String interpolation
 - Error handling
 - Standard library functions
+- Ownership system improvements

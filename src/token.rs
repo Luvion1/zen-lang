@@ -16,6 +16,7 @@ pub enum TokenType {
     Const,
     Mod,
     Use,
+    As,
     Pub,
     Crate,
     Super,
@@ -67,6 +68,7 @@ pub enum TokenType {
 
     Pipe,
     Ampersand,
+    AmpersandMut,
     Bang,
     Tilde,
     Question,

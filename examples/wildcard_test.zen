@@ -1,0 +1,11 @@
+// Test wildcard import
+
+use simple_math::*;
+
+fn main() -> i32 {
+    let result = add(10, 20)
+    let product = multiply(5, 6)
+    
+    println("Result: {result}, Product: {product}")
+    return 0
+}

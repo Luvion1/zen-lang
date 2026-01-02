@@ -1,0 +1,28 @@
+// Comprehensive import system demo
+
+// Different import patterns:
+use simple_math;                    // Import entire module
+use simple_math::add;               // Import specific function
+use simple_math::multiply as mult;  // Import with alias
+
+fn main() -> i32 {
+    println("=== Zen Import System Demo ===")
+    
+    // Using module access
+    let result1 = simple_math::add(10, 5)
+    println("Module access: simple_math::add(10, 5) = {result1}")
+    
+    // Using specific import
+    let result2 = add(20, 8)
+    println("Specific import: add(20, 8) = {result2}")
+    
+    // Using aliased import
+    let result3 = mult(6, 7)
+    println("Aliased import: mult(6, 7) = {result3}")
+    
+    // Complex expression with imports
+    let final_result = add(result1, mult(result2, 2))
+    println("Complex: add({result1}, mult({result2}, 2)) = {final_result}")
+    
+    return final_result
+}

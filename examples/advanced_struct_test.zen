@@ -1,0 +1,20 @@
+struct Rectangle {
+    width: i32,
+    height: i32,
+}
+
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+fn main() -> i32 {
+    let rect = Rectangle { width: 10, height: 5 }
+    let point = Point { x: 3, y: 4 }
+    
+    let area = rect.width * rect.height
+    let distance_squared = point.x * point.x + point.y * point.y
+    
+    let total = area + distance_squared
+    return total
+}

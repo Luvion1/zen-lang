@@ -1,0 +1,54 @@
+// Basic Type Checking Test
+// Testing type inference and function calls
+
+fn add_numbers(a: i32, b: i32) -> i32 {
+    return a + b
+}
+
+fn multiply_and_add(x: i32, y: i32, z: i32) -> i32 {
+    let product = x * y
+    let result = product + z
+    return result
+}
+
+fn test_boolean_logic(a: bool, b: bool) -> bool {
+    let result = a && b
+    return result
+}
+
+fn test_float_operations(x: f64, y: f64) -> f64 {
+    let sum = x + y
+    let product = x * y
+    let result = sum + product
+    return result
+}
+
+fn main() -> i32 {
+    // Test integer operations
+    let num1 = 10
+    let num2 = 20
+    let sum = add_numbers(num1, num2)
+    let complex = multiply_and_add(2, 3, 5)
+
+    // Test boolean operations
+    let bool1 = true
+    let bool2 = false
+    let bool_result = test_boolean_logic(bool1, bool2)
+
+    // Test float operations
+    let float1 = 3.14
+    let float2 = 2.71
+    let float_result = test_float_operations(float1, float2)
+
+    // Test string operations
+    let message = "Hello"
+
+    // Print results
+    println("Sum: {}", sum)
+    println("Complex calculation: {}", complex)
+    println("Boolean result: {}", 1)  // Simplified for now
+    println("Float result: {}", 10)   // Simplified for now
+    println("Message: {}", message)
+
+    return 0
+}

@@ -1,0 +1,26 @@
+// Utility functions module
+pub fn add(a: i32, b: i32) -> i32 {
+    return a + b
+}
+
+pub fn multiply(x: i32, y: i32) -> i32 {
+    return x * y
+}
+
+pub fn factorial(n: i32) -> i32 {
+    if n <= 1 {
+        return 1
+    }
+    return multiply(n, factorial(add(n, -1)))
+}
+
+pub const MAX_VALUE: i32 = 1000
+
+pub struct Point {
+    x: i32,
+    y: i32
+}
+
+pub fn create_point(x: i32, y: i32) -> Point {
+    return Point { x: x, y: y }
+}

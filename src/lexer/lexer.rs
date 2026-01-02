@@ -349,12 +349,23 @@ impl<'a> Lexer<'a> {
                         self.column - 2,
                     ))
                 } else {
-                    Some(Token::new(
-                        TokenType::Ampersand,
-                        "&".to_string(),
-                        self.line,
-                        self.column - 1,
-                    ))
+                    // Check for &mut
+                    let start_pos = self.column - 1;
+                    if self.match_keyword("mut") {
+                        Some(Token::new(
+                            TokenType::AmpersandMut,
+                            "&mut".to_string(),
+                            self.line,
+                            start_pos,
+                        ))
+                    } else {
+                        Some(Token::new(
+                            TokenType::Ampersand,
+                            "&".to_string(),
+                            self.line,
+                            start_pos,
+                        ))
+                    }
                 }
             }
             '|' => {
@@ -504,6 +515,20 @@ impl<'a> Lexer<'a> {
 
     fn peek(&mut self) -> Option<char> {
         self.input.peek().copied()
+    }
+
+    fn match_keyword(&mut self, keyword: &str) -> bool {
+        let current_pos = self.input.clone();
+        
+        for expected in keyword.chars() {
+            if self.peek() != Some(expected) {
+                self.input = current_pos;
+                return false;
+            }
+            self.advance();
+        }
+        
+        true
     }
 
     fn string_literal(&mut self) -> Option<Token> {
@@ -684,6 +709,7 @@ impl<'a> Lexer<'a> {
             "const" => TokenType::Const,
             "mod" => TokenType::Mod,
             "use" => TokenType::Use,
+            "as" => TokenType::As,
             "pub" => TokenType::Pub,
             "crate" => TokenType::Crate,
             "super" => TokenType::Super,

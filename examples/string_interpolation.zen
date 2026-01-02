@@ -1,0 +1,24 @@
+// String Interpolation Example
+fn add(a: i32, b: i32) -> i32 {
+    return a + b
+}
+
+fn main() -> i32 {
+    let name = "Zen"
+    let age = 25
+    let score = 85
+
+    // Basic variable interpolation
+    println("Hello, {name}!")
+
+    // Multiple variables in one string
+    println("Name: {name}, Age: {age}")
+
+    // Expression interpolation
+    println("Double age: {add(age, age)}")
+
+    // Mixed text and variables
+    println("Score: {score}, doubled: {add(score, score)}")
+
+    return 0
+}

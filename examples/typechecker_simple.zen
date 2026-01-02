@@ -1,0 +1,59 @@
+// Simple TypeChecker Test
+// Testing structs and basic type checking
+
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+struct Person {
+    name: str,
+    age: i32,
+}
+
+fn create_point(x_val: i32, y_val: i32) -> Point {
+    let p = Point { x: x_val, y: y_val }
+    return p
+}
+
+fn add_points(p1: Point, p2: Point) -> Point {
+    let result = Point {
+        x: p1.x + p2.x,
+        y: p1.y + p2.y,
+    }
+    return result
+}
+
+fn calculate_distance(p1: Point, p2: Point) -> i32 {
+    let dx = p1.x - p2.x
+    let dy = p1.y - p2.y
+    return dx * dx + dy * dy
+}
+
+fn main() -> i32 {
+    // Test struct creation
+    let origin = Point { x: 0, y: 0 }
+    let point1 = create_point(3, 4)
+    let point2 = Point { x: 1, y: 2 }
+
+    // Test struct operations
+    let sum_point = add_points(point1, point2)
+    let distance = calculate_distance(origin, point1)
+
+    // Test nested struct
+    let person = Person {
+        name: "Alice",
+        age: 25,
+    }
+
+    // Test field access
+    let x_sum = sum_point.x
+    let person_name = person.name
+
+    // Print results
+    println("Sum point: ({}, {})", x_sum, sum_point.y)
+    println("Distance from origin: {}", distance)
+    println("Person: {} age {}", person_name, person.age)
+
+    return 0
+}

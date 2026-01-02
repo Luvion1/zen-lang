@@ -27,6 +27,7 @@ pub enum Stmt {
         params: Vec<(String, String)>,
         return_type: String,
         body: Vec<Stmt>,
+        is_public: bool,
         token: Token,
     },
     Return {
@@ -56,6 +57,30 @@ pub enum Stmt {
         value: Expr,
         arms: Vec<(Expr, Vec<Stmt>)>,
         default: Option<Vec<Stmt>>,
+        token: Token,
+    },
+    Use {
+        path: Vec<String>,
+        alias: Option<String>,
+        token: Token,
+    },
+    Mod {
+        name: String,
+        items: Vec<Stmt>,
+        is_public: bool,
+        token: Token,
+    },
+    StructDecl {
+        name: String,
+        fields: Vec<(String, String)>,
+        is_public: bool,
+        token: Token,
+    },
+    ConstDecl {
+        name: String,
+        type_annotation: Option<String>,
+        initializer: Expr,
+        is_public: bool,
         token: Token,
     },
     ExprStmt {

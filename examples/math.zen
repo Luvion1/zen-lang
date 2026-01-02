@@ -1,0 +1,20 @@
+// Math module with basic operations
+
+pub fn add(a: i32, b: i32) -> i32 {
+    return a + b
+}
+
+pub fn multiply(x: i32, y: i32) -> i32 {
+    return x * y
+}
+
+fn private_helper() -> i32 {
+    return 42
+}
+
+pub const PI: f64 = 3.14159
+
+pub struct Point {
+    x: i32,
+    y: i32
+}

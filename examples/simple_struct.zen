@@ -1,0 +1,11 @@
+// Simple struct test
+struct Simple {
+    value: i32,
+}
+
+fn main() -> i32 {
+    // This is a simple test - struct creation not fully implemented in codegen yet
+    let x = 42
+    println("Simple test: {x}")
+    return 0
+}

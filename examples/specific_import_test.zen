@@ -1,0 +1,9 @@
+// Test different import patterns
+
+use simple_math::add;
+
+fn main() -> i32 {
+    let result = add(10, 20)
+    println("Result: {result}")
+    return 0
+}

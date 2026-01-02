@@ -1,0 +1,12 @@
+// Simple import demo
+
+use simple_math;
+use simple_math::add;
+
+fn main() -> i32 {
+    let result = simple_math::add(10, 20)
+    let product = simple_math::multiply(5, 6)
+    
+    println("Result: {result}, Product: {product}")
+    return 0
+}

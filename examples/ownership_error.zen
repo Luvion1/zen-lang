@@ -1,0 +1,8 @@
+// This should fail: use after move
+fn main() -> i32 {
+    let x = 42
+    let y = <-x  // Move x to y
+    println("Moved: {y}")
+    println("Original: {x}")  // Error: use of moved variable
+    return 0
+}

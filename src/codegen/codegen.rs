@@ -8,6 +8,7 @@ use std::collections::HashMap;
 pub struct CodeGenerator {
     functions: HashMap<String, (Vec<String>, String)>,
     variables: HashMap<String, (String, bool, usize)>,
+    structs: HashMap<String, Vec<(String, String)>>, // struct_name -> [(field_name, field_type)]
     current_function: Option<String>,
     counter: usize,
     label_counter: usize,
@@ -23,6 +24,7 @@ impl CodeGenerator {
         Self {
             functions: HashMap::new(),
             variables: HashMap::new(),
+            structs: HashMap::new(),
             current_function: None,
             counter: 0,
             label_counter: 0,
@@ -44,6 +46,7 @@ impl CodeGenerator {
 
         for stmt in &program.statements {
             self.register_functions(stmt);
+            self.register_structs(stmt);
         }
 
         for stmt in &program.statements {
@@ -59,6 +62,9 @@ impl CodeGenerator {
         }
         #[allow(clippy::single_char_add_str)]
         ir.push_str("\n");
+
+        // Generate struct type definitions
+        self.generate_struct_types(&mut ir);
 
         for stmt in &program.statements {
             self.generate_statement(stmt, &mut ir);
@@ -100,6 +106,29 @@ impl CodeGenerator {
         }
     }
 
+    fn register_structs(&mut self, stmt: &Stmt) {
+        if let Stmt::StructDecl { name, fields, .. } = stmt {
+            let field_types: Vec<(String, String)> = fields.iter()
+                .map(|(field_name, field_type)| (field_name.clone(), field_type.clone()))
+                .collect();
+            self.structs.insert(name.clone(), field_types);
+        }
+    }
+
+    fn generate_struct_types(&self, ir: &mut String) {
+        for (struct_name, fields) in &self.structs {
+            ir.push_str(&format!("%struct.{} = type {{ ", struct_name));
+            let field_types: Vec<String> = fields.iter()
+                .map(|(_, field_type)| self.get_llvm_type(field_type).to_string())
+                .collect();
+            ir.push_str(&field_types.join(", "));
+            ir.push_str(" }\n");
+        }
+        if !self.structs.is_empty() {
+            ir.push_str("\n");
+        }
+    }
+
     fn fresh_id(&mut self) -> usize {
         let id = self.counter;
         self.counter += 1;
@@ -113,25 +142,30 @@ impl CodeGenerator {
         label
     }
 
-    fn get_llvm_type(&self, zen_type: &str) -> &'static str {
+    fn get_llvm_type(&self, zen_type: &str) -> String {
         match zen_type {
-            "i8" => "i8",
-            "i16" => "i16",
-            I32_TYPE => "i32",
-            "i64" => "i64",
-            "u8" => "i8",
-            "u16" => "i16",
-            "u32" => "i32",
-            "u64" => "i64",
-            "f32" => "float",
-            "f64" => "double",
-            "bool" => "i1",
-            "str" => "i8*",
-            "char" => "i8",
-            VOID_TYPE => "void",
+            "i8" => "i8".to_string(),
+            "i16" => "i16".to_string(),
+            I32_TYPE => "i32".to_string(),
+            "i64" => "i64".to_string(),
+            "u8" => "i8".to_string(),
+            "u16" => "i16".to_string(),
+            "u32" => "i32".to_string(),
+            "u64" => "i64".to_string(),
+            "f32" => "float".to_string(),
+            "f64" => "double".to_string(),
+            "bool" => "i1".to_string(),
+            "str" => "i8*".to_string(),
+            "char" => "i8".to_string(),
+            VOID_TYPE => "void".to_string(),
             _ => {
-                eprintln!("Warning: Unknown type '{}', defaulting to i32", zen_type);
-                I32_TYPE
+                // Check if it's a struct type
+                if self.structs.contains_key(zen_type) {
+                    format!("%struct.{}", zen_type)
+                } else {
+                    eprintln!("Warning: Unknown type '{}', defaulting to i32", zen_type);
+                    I32_TYPE.to_string()
+                }
             }
         }
     }
@@ -166,6 +200,24 @@ impl CodeGenerator {
                     self.functions.get(name)
                         .map(|(_, ret_type)| ret_type.clone())
                         .unwrap_or_else(|| "i32".to_string())
+                } else {
+                    "i32".to_string()
+                }
+            }
+            Expr::StructLiteral { struct_name, .. } => struct_name.clone(),
+            Expr::FieldAccess { object, field, .. } => {
+                let object_type = self.infer_expression_type(object);
+                if let Some(struct_name) = self.get_struct_name_from_type(&object_type) {
+                    if let Some(struct_fields) = self.structs.get(struct_name) {
+                        if let Some((_, field_type)) = struct_fields.iter()
+                            .find(|(field_name, _)| field_name == field) {
+                            field_type.clone()
+                        } else {
+                            "i32".to_string()
+                        }
+                    } else {
+                        "i32".to_string()
+                    }
                 } else {
                     "i32".to_string()
                 }
@@ -365,6 +417,7 @@ impl CodeGenerator {
                         crate::ast::expr::Expr::FloatLiteral { .. } => "f64",
                         crate::ast::expr::Expr::BooleanLiteral { .. } => "bool",
                         crate::ast::expr::Expr::CharLiteral { .. } => "char",
+                        crate::ast::expr::Expr::StructLiteral { struct_name, .. } => struct_name.as_str(),
                         _ => I32_TYPE,
                     }
                 } else {
@@ -383,15 +436,53 @@ impl CodeGenerator {
                     .insert(name.clone(), (zen_type.to_string(), *is_mutable, id));
 
                 if let Some(init) = initializer {
-                    let init_value = self.generate_expression(init, ir);
-                    // Handle string types specially
-                    if zen_type == "str" {
-                        ir.push_str(&format!("  store i8* {}, i8** %{}\n", init_value, id));
+                    // Handle struct literals specially
+                    if let crate::ast::expr::Expr::StructLiteral { struct_name, fields, .. } = init {
+                        if struct_name == zen_type && self.structs.contains_key(struct_name) {
+                            // Generate struct literal directly into the allocated space
+                            let struct_fields = self.structs.get(struct_name).unwrap().clone();
+
+                            // Create a map of field name to expression for easy lookup
+                            let mut field_exprs = std::collections::HashMap::new();
+                            for (field_name, field_expr) in fields {
+                                field_exprs.insert(field_name.clone(), field_expr);
+                            }
+
+                            // Generate field values and store them
+                            for (field_index, (field_name, _)) in struct_fields.iter().enumerate() {
+                                if let Some(field_expr) = field_exprs.get(field_name) {
+                                    let field_value = self.generate_expression(field_expr, ir);
+
+                                    // Get field type
+                                    let (_, field_type) = &struct_fields[field_index];
+                                    let field_llvm_type = self.get_llvm_type(field_type);
+
+                                    // Generate getelementptr for field access
+                                    let gep_id = self.fresh_id();
+                                    ir.push_str(&format!("  %{} = getelementptr inbounds {}, {}* %{}, i32 0, i32 {}\n",
+                                                       gep_id, llvm_type, llvm_type, id, field_index));
+
+                                    // Store field value
+                                    ir.push_str(&format!("  store {} {}, {}* %{}\n",
+                                                       field_llvm_type, field_value, field_llvm_type, gep_id));
+                                } else {
+                                    eprintln!("Warning: Missing field '{}' in struct '{}' literal", field_name, struct_name);
+                                }
+                            }
+                        } else {
+                            eprintln!("Warning: Struct type mismatch or undefined struct");
+                        }
                     } else {
-                        ir.push_str(&format!(
-                            "  store {} {}, {}* %{}\n",
-                            llvm_type, init_value, llvm_type, id
-                        ));
+                        let init_value = self.generate_expression(init, ir);
+                        // Handle string types specially
+                        if zen_type == "str" {
+                            ir.push_str(&format!("  store i8* {}, i8** %{}\n", init_value, id));
+                        } else {
+                            ir.push_str(&format!(
+                                "  store {} {}, {}* %{}\n",
+                                llvm_type, init_value, llvm_type, id
+                            ));
+                        }
                     }
                 }
             }
@@ -422,10 +513,10 @@ impl CodeGenerator {
                     if let Some((_, ret)) = self.functions.get(fn_name) {
                         self.get_llvm_type(ret)
                     } else {
-                        "i32"
+                        "i32".to_string()
                     }
                 } else {
-                    "i32"
+                    "i32".to_string()
                 };
 
                 if let Some(v) = value {
@@ -1056,6 +1147,159 @@ impl CodeGenerator {
             }
 
             Expr::OwnershipTransfer { expr, .. } => self.generate_expression(expr, ir),
+            
+            Expr::Borrow { expr, is_mutable, .. } => {
+                // For now, treat borrows as the underlying expression
+                // In a full implementation, this would generate pointer types
+                if *is_mutable {
+                    // Mutable borrow - would generate mutable pointer
+                    self.generate_expression(expr, ir)
+                } else {
+                    // Immutable borrow - would generate immutable pointer
+                    self.generate_expression(expr, ir)
+                }
+            }
+            Expr::FieldAccess { object, field, .. } => {
+                self.generate_field_access(object, field, ir)
+            }
+            Expr::StructLiteral { struct_name, fields, .. } => {
+                self.generate_struct_literal(struct_name, fields, ir)
+            }
+            Expr::ArrayAccess { array, index, .. } => {
+                self.generate_array_access(array, index, ir)
+            }
+            Expr::ModuleAccess { item, .. } => {
+                // Enhanced but stable module access
+                item.clone()
+            }
+        }
+    }
+
+    fn generate_field_access(&mut self, object: &Expr, field: &str, ir: &mut String) -> String {
+        let object_type = self.infer_expression_type(object);
+
+        // For field access, we need the pointer to the struct, not the loaded value
+        let object_ptr = match object {
+            Expr::Identifier { name, .. } => {
+                // For variables, get the pointer directly
+                if let Some((_, _, var_id)) = self.variables.get(name) {
+                    format!("%{}", var_id)
+                } else {
+                    eprintln!("Error: Variable '{}' not found", name);
+                    return "0".to_string();
+                }
+            }
+            _ => {
+                // For other expressions, generate normally (this might need more cases)
+                self.generate_expression(object, ir)
+            }
+        };
+
+        if let Some(struct_name) = self.get_struct_name_from_type(&object_type) {
+            if let Some(struct_fields) = self.structs.get(struct_name) {
+                // Find field index
+                if let Some((field_index, (_, field_type))) = struct_fields.iter().enumerate()
+                    .find(|(_, (field_name, _))| field_name == field) {
+
+                    let field_llvm_type = self.get_llvm_type(field_type);
+                    let struct_llvm_type = self.get_llvm_type(struct_name);
+
+                    // Generate getelementptr for field access
+                    let gep_id = self.fresh_id();
+                    ir.push_str(&format!("  %{} = getelementptr inbounds {}, {}* {}, i32 0, i32 {}\n",
+                                       gep_id, struct_llvm_type, struct_llvm_type, object_ptr, field_index));
+
+                    // Load the field value
+                    let load_id = self.fresh_id();
+                    ir.push_str(&format!("  %{} = load {}, {}* %{}\n",
+                                       load_id, field_llvm_type, field_llvm_type, gep_id));
+
+                    format!("%{}", load_id)
+                } else {
+                    eprintln!("Error: Field '{}' does not exist in struct '{}'", field, struct_name);
+                    "0".to_string()
+                }
+            } else {
+                eprintln!("Error: Struct '{}' not found", struct_name);
+                "0".to_string()
+            }
+        } else {
+            eprintln!("Error: Cannot access field '{}' on non-struct type", field);
+            "0".to_string()
+        }
+    }
+
+    fn generate_struct_literal(&mut self, struct_name: &str, fields: &[(String, Expr)], ir: &mut String) -> String {
+        // Get struct field information first (immutable borrow)
+        let struct_fields = if let Some(fields) = self.structs.get(struct_name) {
+            fields.clone()
+        } else {
+            eprintln!("Error: Undefined struct '{}'", struct_name);
+            return "null".to_string();
+        };
+
+        // Create a map of field name to expression for easy lookup
+        let mut field_exprs = std::collections::HashMap::new();
+        for (field_name, field_expr) in fields {
+            field_exprs.insert(field_name.clone(), field_expr);
+        }
+
+        // Generate field values (now we can do mutable borrows)
+        let mut field_values = Vec::new();
+
+        for (field_name, _) in &struct_fields {
+            // Find the corresponding field in the literal
+            if let Some(field_expr) = field_exprs.get(field_name) {
+                let field_value = self.generate_expression(field_expr, ir);
+                field_values.push(field_value);
+            } else {
+                eprintln!("Warning: Missing field '{}' in struct '{}' literal", field_name, struct_name);
+                field_values.push("0".to_string());
+            }
+        }
+
+        // Create struct constant
+        let struct_llvm_type = self.get_llvm_type(struct_name);
+        
+        // Allocate space for the struct
+        let alloc_id = self.fresh_id();
+        ir.push_str(&format!("  %{} = alloca {}\n", alloc_id, struct_llvm_type));
+
+        // Store each field individually using getelementptr
+        for (field_index, field_value) in field_values.iter().enumerate() {
+            let gep_id = self.fresh_id();
+            ir.push_str(&format!("  %{} = getelementptr inbounds {}, {}* %{}, i32 0, i32 {}\n",
+                               gep_id, struct_llvm_type, struct_llvm_type, alloc_id, field_index));
+            
+            let field_type = &struct_fields[field_index].1;
+            let field_llvm_type = self.get_llvm_type(field_type);
+            ir.push_str(&format!("  store {} {}, {}* %{}\n",
+                               field_llvm_type, field_value, field_llvm_type, gep_id));
+        }
+
+        format!("%{}", alloc_id)
+    }
+
+    fn generate_array_access(&mut self, array: &Expr, index: &Expr, ir: &mut String) -> String {
+        let array_val = self.generate_expression(array, ir);
+        let index_val = self.generate_expression(index, ir);
+        
+        // For now, simple implementation - would need more sophisticated handling
+        let id = self.fresh_id();
+        ir.push_str(&format!("  %{} = getelementptr inbounds i32, i32* {}, i32 {}\n", 
+                           id, array_val, index_val));
+        
+        let load_id = self.fresh_id();
+        ir.push_str(&format!("  %{} = load i32, i32* %{}\n", load_id, id));
+        
+        format!("%{}", load_id)
+    }
+
+    fn get_struct_name_from_type<'a>(&self, zen_type: &'a str) -> Option<&'a str> {
+        if self.structs.contains_key(zen_type) {
+            Some(zen_type)
+        } else {
+            None
         }
     }
 

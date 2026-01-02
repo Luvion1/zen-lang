@@ -55,4 +55,29 @@ pub enum Expr {
         expr: Box<Expr>,
         token: Token,
     },
+    Borrow {
+        expr: Box<Expr>,
+        is_mutable: bool,
+        token: Token,
+    },
+    FieldAccess {
+        object: Box<Expr>,
+        field: String,
+        token: Token,
+    },
+    ArrayAccess {
+        array: Box<Expr>,
+        index: Box<Expr>,
+        token: Token,
+    },
+    StructLiteral {
+        struct_name: String,
+        fields: Vec<(String, Expr)>,
+        token: Token,
+    },
+    ModuleAccess {
+        module: String,
+        item: String,
+        token: Token,
+    },
 }

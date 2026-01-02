@@ -1,0 +1,13 @@
+// Simple type checking test
+fn test_function(x: i32, y: f64) -> i32 {
+    let result = x + 5
+    return result
+}
+
+fn main() -> i32 {
+    let a = 10
+    let b = 3.14
+    let c = test_function(a, b)  // Type checking should work
+    println("Type checking test: {c}")
+    return 0
+}

@@ -113,6 +113,20 @@ impl StringGenerator {
                     self.collect_strings(s);
                 }
             }
+            Stmt::Use { .. } => {
+                // Use statements don't contain strings to collect
+            }
+            Stmt::Mod { items, .. } => {
+                for item in items {
+                    self.collect_strings(item);
+                }
+            }
+            Stmt::StructDecl { .. } => {
+                // Struct declarations don't contain strings to collect
+            }
+            Stmt::ConstDecl { initializer, .. } => {
+                self.collect_strings_from_expr(initializer);
+            }
         }
     }
 
@@ -150,6 +164,9 @@ impl StringGenerator {
             }
             Expr::OwnershipTransfer { expr, .. } => {
                 self.collect_strings_from_expr(expr);
+            }
+            Expr::ModuleAccess { .. } => {
+                // Module access doesn't contain strings to collect
             }
             _ => {}
         }

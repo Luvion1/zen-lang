@@ -1,0 +1,12 @@
+// String utilities module
+
+pub fn concat(a: str, b: str) -> str {
+    // This would be implemented with proper string handling
+    return a
+}
+
+pub fn length(s: str) -> i32 {
+    return 0  // Placeholder
+}
+
+pub const EMPTY: str = ""
